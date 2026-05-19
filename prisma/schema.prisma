@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  AUTHOR
+  REVIEWER
+  EDITOR
+}
+
+enum ManuscriptStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+  REVISION_REQUIRED
+}
+
+enum ReviewerProgress {
+  NOT_STARTED
+  BEGIN_REVIEW
+  IN_PROGRESS
+  FINISHED_REVIEW
+}
+
+enum ReviewRecommendation {
+  ACCEPT
+  MINOR_REVISION
+  MAJOR_REVISION
+  REJECT
+}
+
+enum EditorialDecisionType {
+  ACCEPT
+  REJECT
+  REQUEST_REVISION
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         Role
+  firstName    String?
+  lastName     String?
+  affiliation  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  manuscriptsAuthored Manuscript[]           @relation("AuthorManuscripts")
+  reviewAssignments ReviewAssignment[]      @relation("ReviewerAssignments")
+  assignmentsMade    ReviewAssignment[]      @relation("EditorAssignments")
+  reviews            Review[]
+  editorialDecisions EditorialDecision[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model JournalSettings {
+  id                 Int       @id @default(1)
+  submissionDeadline DateTime?
+  openForSubmissions Boolean   @default(true)
+  updatedAt          DateTime  @updatedAt
+}
+
+model Manuscript {
+  id          String           @id @default(uuid())
+  authorId    String
+  author      User             @relation("AuthorManuscripts", fields: [authorId], references: [id], onDelete: Cascade)
+  title       String
+  abstract    String
+  keywords    String[]
+  references  String           @db.Text
+  status      ManuscriptStatus @default(SUBMITTED)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  files        ManuscriptFile[]
+  assignments  ReviewAssignment[]
+  decisions    EditorialDecision[]
+  publication  Publication?
+
+  @@index([authorId])
+  @@index([status])
+}
+
+model ManuscriptFile {
+  id             String     @id @default(uuid())
+  manuscriptId   String
+  manuscript     Manuscript @relation(fields: [manuscriptId], references: [id], onDelete: Cascade)
+  storedName     String
+  originalName   String
+  mimeType       String
+  sizeBytes      Int
+  versionLabel   Int        @default(1)
+  isLatest       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+
+  @@index([manuscriptId])
+}
+
+model ReviewAssignment {
+  id           String           @id @default(uuid())
+  manuscriptId String
+  manuscript   Manuscript       @relation(fields: [manuscriptId], references: [id], onDelete: Cascade)
+  reviewerId   String
+  reviewer     User             @relation("ReviewerAssignments", fields: [reviewerId], references: [id], onDelete: Cascade)
+  assignedById String
+  assignedBy   User             @relation("EditorAssignments", fields: [assignedById], references: [id], onDelete: Cascade)
+  deadline     DateTime
+  progress     ReviewerProgress @default(NOT_STARTED)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  review Review?
+
+  @@unique([manuscriptId, reviewerId])
+  @@index([reviewerId])
+}
+
+model Review {
+  id                 String               @id @default(uuid())
+  assignmentId       String               @unique
+  assignment         ReviewAssignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  reviewerId         String
+  reviewer           User                 @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  commentsToAuthor   String               @db.Text
+  commentsToEditor   String               @db.Text
+  recommendation     ReviewRecommendation
+  createdAt          DateTime             @default(now())
+
+  @@index([reviewerId])
+}
+
+model EditorialDecision {
+  id           String                @id @default(uuid())
+  manuscriptId String
+  manuscript   Manuscript            @relation(fields: [manuscriptId], references: [id], onDelete: Cascade)
+  editorId     String
+  editor       User                  @relation(fields: [editorId], references: [id], onDelete: Cascade)
+  decision     EditorialDecisionType
+  notes        String?               @db.Text
+  createdAt    DateTime              @default(now())
+
+  @@index([manuscriptId])
+}
+
+model Issue {
+  id          String   @id @default(uuid())
+  volume      Int
+  issueNumber Int
+  year        Int
+  title       String?
+  createdAt   DateTime @default(now())
+
+  publications Publication[]
+
+  @@unique([volume, issueNumber, year])
+}
+
+model Publication {
+  id            String     @id @default(uuid())
+  issueId       String
+  issue         Issue      @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  manuscriptId  String     @unique
+  manuscript    Manuscript @relation(fields: [manuscriptId], references: [id], onDelete: Cascade)
+  slug          String     @unique
+  scholarReady  Boolean    @default(false)
+  publishedAt   DateTime   @default(now())
+
+  @@index([issueId])
+}

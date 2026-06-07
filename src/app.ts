@@ -21,7 +21,7 @@ export function createApp(): express.Application {
   );
   app.use(express.json({ limit: "2mb" }));
 
-  app.get("/health", (_req, res) => {
+  app.get("/", (_req, res) => {
     res.json({ ok: true, service: "jida-backend" });
   });
 

@@ -13,6 +13,7 @@ export function authMiddleware(req: AuthedRequest, res: Response, next: NextFunc
     return;
   }
   const token = header.slice("Bearer ".length).trim();
+
   try {
     const payload = verifyAccessToken(token);
     req.user = { id: payload.sub, role: payload.role as Role };

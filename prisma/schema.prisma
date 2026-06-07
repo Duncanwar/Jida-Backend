@@ -11,6 +11,7 @@ enum Role {
   AUTHOR
   REVIEWER
   EDITOR
+  ADMIN
 }
 
 enum ManuscriptStatus {

@@ -52,12 +52,14 @@ manuscriptsRouter.post(
   "/",
   upload.single("file"),
   asyncHandler(async (req: AuthedRequest, res) => {
+    console.log(req.body.title)
     const title = req.body?.title as string | undefined;
     const abstract = req.body?.abstract as string | undefined;
     const keywordsRaw = req.body?.keywords as string | undefined;
     const references = req.body?.references as string | undefined;
 
     if (!req.file || !title || !abstract || !references) {
+      console.warn("Invalid", title)
       res.status(400).json({ error: "file, title, abstract, and references are required" });
       return;
     }

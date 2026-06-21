@@ -13,6 +13,10 @@ import { settingsRouter } from "./routes/settings.js";
 export function createApp(): express.Application {
   const app = express();
 
+  if (env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
   app.use(
     cors({
       origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN,
@@ -20,6 +24,10 @@ export function createApp(): express.Application {
     }),
   );
   app.use(express.json({ limit: "2mb" }));
+
+  app.get("/health", (_req, res) => {
+    res.json({ ok: true, service: "jida-backend" });
+  });
 
   app.get("/", (_req, res) => {
     res.json({ ok: true, service: "jida-backend" });

@@ -5,15 +5,15 @@
   "description": "JIDA journal platform REST API (Node.js + TypeScript + PostgreSQL)",
   "main": "dist/server.js",
   "scripts": {
-    "postinstall": "prisma generate",
-    "build": "prisma generate && tsc",
+    "postinstall": "npx prisma generate",
+    "build": "npx prisma generate && tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "render:release": "prisma migrate deploy",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "render:release": "npx prisma migrate deploy",
+    "db:generate": "npx prisma generate",
+    "db:migrate": "npx prisma migrate dev",
+    "db:push": "npx prisma db push",
+    "db:studio": "npx prisma studio"
   },
   "engines": {
     "node": ">=20"

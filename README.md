@@ -149,3 +149,7 @@ On the **free** web tier, uploaded files are **ephemeral** (lost on redeploy). F
 3. Redeploy via Blueprint or add a 1 GB disk in the Render Dashboard (`mountPath: /var/data/uploads`).
 
 Render Postgres on the free tier also expires after 90 days of inactivity; use a paid DB plan for production.
+
+### Prisma version
+
+This project uses **Prisma 6.19.3** (pinned in `package.json`). Do **not** run `npx prisma@latest` or upgrade to Prisma 7 without migrating — Prisma 7 removes `url` from `schema.prisma` and requires `prisma.config.ts`, driver adapters, and Node **20.19+**.

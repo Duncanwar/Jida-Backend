@@ -5,21 +5,25 @@
   "description": "JIDA journal platform REST API (Node.js + TypeScript + PostgreSQL)",
   "main": "dist/server.js",
   "scripts": {
-    "postinstall": "npx prisma generate",
-    "build": "npx prisma generate && tsc",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "render:release": "npx prisma migrate deploy",
-    "db:generate": "npx prisma generate",
-    "db:migrate": "npx prisma migrate dev",
-    "db:push": "npx prisma db push",
-    "db:studio": "npx prisma studio"
+    "render:release": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19"
+  },
+  "overrides": {
+    "prisma": "6.19.3",
+    "@prisma/client": "6.19.3"
   },
   "dependencies": {
-    "@prisma/client": "^6.8.2",
+    "@prisma/client": "6.19.3",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -27,8 +31,8 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.10.0",
+    "prisma": "6.19.3",
     "uuid": "^11.1.0",
-    "prisma": "^6.8.2",
     "zod": "^3.24.4"
   },
   "devDependencies": {

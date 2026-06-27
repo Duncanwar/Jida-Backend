@@ -5,7 +5,7 @@
   "description": "JIDA journal platform REST API (Node.js + TypeScript + PostgreSQL)",
   "main": "dist/server.js",
   "scripts": {
-     "test": "npx jest --coverage",
+    "test": "npx jest --coverage",
     "build": "tsc",
     "start": "node --max-old-space-size=450  dist/app.js",
     "dev": "npx prisma generate dev && nodemon --exec ts-node src/app.ts",

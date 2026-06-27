@@ -1,20 +1,26 @@
 FROM node:20-bullseye-slim AS base
+
 WORKDIR /usr/src/app
-# THIS IS TO ENABLE PRISMA TO DETECT REQUIRED FILES
-RUN apt-get update && apt-get install -y openssl libssl-dev
+
+RUN apt-get update && apt-get install -y openssl
 
 FROM base AS build
-COPY ./package.json ./tsconfig.json ./
-RUN yarn install --frozen-lockfile --network-timeout 100000
-RUN npm install
-COPY . .
-RUN yarn prisma:generate && yarn build
 
-FROM base AS production
-COPY --from=build /usr/src/app/dist ./dist
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
+
+COPY . .
+
+RUN npx prisma generate
+RUN yarn build
+
+FROM base
+
+WORKDIR /usr/src/app
+
 COPY --from=build /usr/src/app/node_modules ./node_modules
-COPY --from=build /usr/src/app/package.json ./package.json
+COPY --from=build /usr/src/app/dist ./dist
 COPY --from=build /usr/src/app/prisma ./prisma
-# COPY --from=build /usr/src/app/.env ./.env
+COPY --from=build /usr/src/app/package.json ./
 
 CMD ["yarn", "start"]

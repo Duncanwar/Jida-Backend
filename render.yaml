@@ -1,6 +1,6 @@
 # Render Blueprint: https://render.com/docs/blueprint-spec
 #
-# Deploy: Render Dashboard → New → Blueprint → select this repo.
+# Deploy: Render Dashboard → New → Blueprint → connect this repo.
 # After deploy, set CORS_ORIGIN to your frontend URL in the service Environment tab.
 #
 # Manuscript uploads: free-tier filesystem is ephemeral (lost on redeploy).

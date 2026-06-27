@@ -101,7 +101,7 @@ All authenticated routes expect: `Authorization: Bearer <accessToken>`.
 This repo includes a [`render.yaml`](render.yaml) blueprint that provisions:
 
 - **PostgreSQL** (`jida-db`) — `DATABASE_URL` linked automatically
-- **Web service** (`jida-api`) — Node 20, build, migrate, and health check
+- **Web service** (`jida-api`) — Node 22 (via `.node-version`), build, migrate, and health check
 
 ### Option A — Blueprint (recommended)
 

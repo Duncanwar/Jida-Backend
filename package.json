@@ -18,12 +18,8 @@
   "engines": {
     "node": ">=20.19"
   },
-  "overrides": {
-    "prisma": "6.19.3",
-    "@prisma/client": "6.19.3"
-  },
   "dependencies": {
-    "@prisma/client": "6.19.3",
+    "@prisma/client": "^6.19.3",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -31,7 +27,6 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.10.0",
-    "prisma": "6.19.3",
     "uuid": "^11.1.0",
     "zod": "^3.24.4"
   },
@@ -43,6 +38,7 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.20.0",
     "@types/nodemailer": "^6.4.17",
+    "prisma": "^6.19.3",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

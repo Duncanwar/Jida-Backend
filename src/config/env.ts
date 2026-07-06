@@ -11,6 +11,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   CORS_ORIGIN: z.string().default("*"),
   UPLOAD_DIR: z.string().default("./uploads"),
+  BACKUP_DIR: z.string().default("./backups"),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_SECURE: z

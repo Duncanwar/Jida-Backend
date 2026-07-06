@@ -9,6 +9,7 @@ import { reviewerRouter } from "./routes/reviewer.js";
 import { editorRouter } from "./routes/editor.js";
 import { publicRouter } from "./routes/public.js";
 import { settingsRouter } from "./routes/settings.js";
+import { adminRouter } from "./routes/admin.js";
 
 export function createApp(): express.Application {
   const app = express();
@@ -40,6 +41,7 @@ export function createApp(): express.Application {
   app.use("/api/reviewer", reviewerRouter);
   app.use("/api/editor", editorRouter);
   app.use("/api/public", publicRouter);
+  app.use("/api/admin", adminRouter);
 
   app.use(errorHandler);
   return app;

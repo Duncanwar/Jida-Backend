@@ -7,12 +7,12 @@ import { notifyReviewerDeadlineApproaching } from "./notifications.js";
 /**
  * Background jobs required by the SRS:
  *  - FR-R6: notify reviewers of approaching review deadlines via email.
- *  - DB-03: perform automated backups at least once per week.
+ *  - DB-03 / RM-01: perform automated daily backups (weekly minimum required).
  */
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly tick
 const REMINDER_WINDOW_MS = 48 * 60 * 60 * 1000; // remind within 48h of deadline
-const BACKUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // weekly
+const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // daily (RM-01; exceeds DB-03's weekly minimum)
 
 type SchedulerState = {
   remindedAssignmentIds: string[];
@@ -73,7 +73,7 @@ export async function sendDeadlineReminders(): Promise<void> {
   }
 }
 
-/** DB-03 — weekly JSON export of all relational data to BACKUP_DIR. */
+/** DB-03 / RM-01 — daily JSON export of all relational data to BACKUP_DIR. */
 export async function runBackup(): Promise<string> {
   fs.mkdirSync(env.BACKUP_DIR, { recursive: true });
 
@@ -139,5 +139,5 @@ export function startScheduler(): void {
   void tick();
   const timer = setInterval(() => void tick(), CHECK_INTERVAL_MS);
   timer.unref();
-  console.info("[scheduler] started (deadline reminders hourly, backups weekly)");
+  console.info("[scheduler] started (deadline reminders hourly, backups daily)");
 }

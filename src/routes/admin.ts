@@ -51,7 +51,7 @@ adminRouter.get(
 const createUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  role: z.enum([Role.AUTHOR, Role.REVIEWER, Role.EDITOR]),
+  role: z.enum([Role.AUTHOR, Role.REVIEWER, Role.EDITOR, Role.ADMIN]),
   name: z.string().optional(),
   institution: z.string().optional(),
 });

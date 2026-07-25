@@ -1,0 +1,104 @@
+{
+  "createdAt": "2026-07-20T18:16:30.241Z",
+  "users": [
+    {
+      "id": "031aa714-a640-4dd1-82a8-117e19a882ed",
+      "email": "admin@gmail.com",
+      "role": "ADMIN",
+      "firstName": null,
+      "lastName": null,
+      "affiliation": null,
+      "createdAt": "2026-06-02T17:00:56.314Z"
+    },
+    {
+      "id": "dfd722c4-ccbc-4c64-ac95-1cb4074fa12a",
+      "email": "samson@samson.com",
+      "role": "AUTHOR",
+      "firstName": null,
+      "lastName": null,
+      "affiliation": null,
+      "createdAt": "2026-06-04T17:33:08.276Z"
+    },
+    {
+      "id": "d29e65bf-5827-4e43-96a1-3667df367a2f",
+      "email": "edmond@edmon.com",
+      "role": "EDITOR",
+      "firstName": null,
+      "lastName": null,
+      "affiliation": null,
+      "createdAt": "2026-06-04T17:34:12.573Z"
+    },
+    {
+      "id": "c8744977-49f9-4f7d-a043-66fe587ac924",
+      "email": "milcah@mil.com",
+      "role": "REVIEWER",
+      "firstName": null,
+      "lastName": null,
+      "affiliation": null,
+      "createdAt": "2026-06-04T17:35:01.059Z"
+    }
+  ],
+  "manuscripts": [
+    {
+      "id": "94d8d703-5f43-43af-ba4f-a8168d6f4145",
+      "authorId": "dfd722c4-ccbc-4c64-ac95-1cb4074fa12a",
+      "title": "Darren",
+      "abstract": "hello",
+      "keywords": [],
+      "references": "ebm",
+      "status": "SUBMITTED",
+      "createdAt": "2026-06-08T17:25:58.837Z",
+      "updatedAt": "2026-06-08T17:25:58.837Z"
+    },
+    {
+      "id": "76b085e7-9db0-4e1f-a275-424101da4cf9",
+      "authorId": "dfd722c4-ccbc-4c64-ac95-1cb4074fa12a",
+      "title": "Hello",
+      "abstract": "asjDKdkDKjd",
+      "keywords": [
+        "dd"
+      ],
+      "references": "dakdjkafja",
+      "status": "SUBMITTED",
+      "createdAt": "2026-06-29T20:10:04.703Z",
+      "updatedAt": "2026-06-29T20:10:04.703Z"
+    }
+  ],
+  "files": [
+    {
+      "id": "7dd04fba-87d1-4849-b6d7-f2bcb33af9ce",
+      "manuscriptId": "94d8d703-5f43-43af-ba4f-a8168d6f4145",
+      "storedName": "956e57e0-9711-4904-b5f0-917b9a67ef8f.pdf",
+      "originalName": "Software Requirements Specification (SRS) (2) (2).pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 460134,
+      "versionLabel": 1,
+      "isLatest": true,
+      "createdAt": "2026-06-08T17:25:58.837Z"
+    },
+    {
+      "id": "64e2a275-8b18-4207-912d-f5f7fa703d9b",
+      "manuscriptId": "76b085e7-9db0-4e1f-a275-424101da4cf9",
+      "storedName": "a0c86189-189d-4ef4-8101-f4e4b0891226.pdf",
+      "originalName": "_Resume - DUNCAN SEMUGESHI.docx.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 151840,
+      "versionLabel": 1,
+      "isLatest": true,
+      "createdAt": "2026-06-29T20:10:04.703Z"
+    }
+  ],
+  "assignments": [],
+  "reviews": [],
+  "decisions": [],
+  "issues": [],
+  "publications": [],
+  "settings": [
+    {
+      "id": 1,
+      "submissionDeadline": null,
+      "openForSubmissions": true,
+      "updatedAt": "2026-06-08T17:25:58.804Z"
+    }
+  ]
+}

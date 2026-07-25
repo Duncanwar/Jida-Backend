@@ -14,6 +14,19 @@ import { sendReviewerAssignmentEmail } from "./reviewer.js";
 export const editorRouter = Router();
 editorRouter.use(authMiddleware, requireRole(Role.EDITOR));
 
+/** FR-E3 — list available reviewers so editors can assign them. */
+editorRouter.get(
+  "/reviewers",
+  asyncHandler(async (_req, res) => {
+    const reviewers = await prisma.user.findMany({
+      where: { role: Role.REVIEWER },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, email: true, firstName: true, lastName: true, affiliation: true },
+    });
+    res.json(reviewers);
+  }),
+);
+
 editorRouter.get(
   "/submissions",
   asyncHandler(async (req, res) => {
@@ -187,7 +200,17 @@ editorRouter.post(
   "/issues",
   asyncHandler(async (req, res) => {
     const body = issueSchema.parse(req.body);
-    const issue = await prisma.issue.create({ data: body });
+    const issue = await prisma.issue.upsert({
+      where: {
+        volume_issueNumber_year: {
+          volume: body.volume,
+          issueNumber: body.issueNumber,
+          year: body.year,
+        },
+      },
+      create: body,
+      update: { ...(body.title ? { title: body.title } : {}) },
+    });
     res.status(201).json(issue);
   }),
 );

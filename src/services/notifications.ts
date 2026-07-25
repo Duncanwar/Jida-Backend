@@ -38,6 +38,19 @@ export async function notifyReviewerAssigned(
   });
 }
 
+/** FR-R6 — approaching review deadline reminder. */
+export async function notifyReviewerDeadlineApproaching(
+  email: string,
+  title: string,
+  deadline: Date,
+): Promise<void> {
+  await sendMail({
+    to: email,
+    subject: "JIDA: review deadline approaching",
+    text: `Reminder: your review of "${title}" is due by ${deadline.toISOString()}. Please submit your evaluation before the deadline.`,
+  });
+}
+
 export async function notifyEditorPendingDecision(editorEmail: string, title: string): Promise<void> {
   await sendMail({
     to: editorEmail,

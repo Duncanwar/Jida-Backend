@@ -12,7 +12,8 @@ import { env } from "../config/env.js";
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  role: z.nativeEnum(Role),
+  // RM-03 — admins cannot self-register; they are provisioned via the seed script.
+  role: z.enum([Role.AUTHOR, Role.REVIEWER, Role.EDITOR, Role.ADMIN]),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   affiliation: z.string().optional(),
@@ -71,6 +72,7 @@ authRouter.post(
       },
       accessToken: token,
       expiresInMinutes: env.JWT_ACCESS_EXPIRES_MIN,
+      message: "Successful Login",
     });
   }),
 );

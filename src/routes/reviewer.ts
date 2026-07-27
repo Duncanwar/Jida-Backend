@@ -10,7 +10,7 @@ import { authMiddleware, requireRole, type AuthedRequest } from "../middleware/a
 import { notifyEditorPendingDecision, notifyReviewerAssigned } from "../services/notifications.js";
 
 export const reviewerRouter = Router();
-reviewerRouter.use(authMiddleware, requireRole(Role.REVIEWER));
+reviewerRouter.use(authMiddleware, requireRole(Role.REVIEWER, Role.ADMIN));
 
 reviewerRouter.get(
   "/assignments",

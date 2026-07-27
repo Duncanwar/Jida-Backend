@@ -46,7 +46,7 @@ const upload = multer({
 
 export const manuscriptsRouter = Router();
 
-manuscriptsRouter.use(authMiddleware, requireRole(Role.AUTHOR));
+manuscriptsRouter.use(authMiddleware, requireRole(Role.AUTHOR, Role.ADMIN));
 
 manuscriptsRouter.post(
   "/",

@@ -6,11 +6,16 @@ import { ReviewerProgress, Role, ReviewRecommendation } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
-import { authMiddleware, requireRole, type AuthedRequest } from "../middleware/auth.js";
+import {
+  authMiddleware,
+  requireRole,
+  requireVerifiedEmail,
+  type AuthedRequest,
+} from "../middleware/auth.js";
 import { notifyEditorPendingDecision, notifyReviewerAssigned } from "../services/notifications.js";
 
 export const reviewerRouter = Router();
-reviewerRouter.use(authMiddleware, requireRole(Role.REVIEWER, Role.ADMIN));
+reviewerRouter.use(authMiddleware, requireVerifiedEmail, requireRole(Role.REVIEWER, Role.ADMIN));
 
 reviewerRouter.get(
   "/assignments",

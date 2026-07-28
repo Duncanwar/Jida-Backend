@@ -42,14 +42,34 @@ enum EditorialDecisionType {
   REQUEST_REVISION
 }
 
+/// How the account authenticates. LOCAL = email + password, GOOGLE = Google
+/// Identity Services, BOTH = a local account that has been linked to Google.
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  BOTH
+}
+
 model User {
   id           String    @id @default(uuid())
   email        String    @unique
-  passwordHash String
+  /// Null for accounts created purely through Google sign-in.
+  passwordHash String?
   role         Role
   firstName    String?
   lastName     String?
   affiliation  String?
+
+  /// FR-AUTH-1 — every non-admin account must confirm ownership of its email
+  /// address before it can sign in. Admins are provisioned pre-verified by the
+  /// seed script; Google accounts inherit Google's own verification.
+  emailVerified   Boolean      @default(false)
+  emailVerifiedAt DateTime?
+  authProvider    AuthProvider @default(LOCAL)
+  /// Google's stable subject identifier ("sub" claim). Unique when present.
+  googleId        String?      @unique
+  avatarUrl       String?
+
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -59,6 +79,27 @@ model User {
   reviews            Review[]
   editorialDecisions EditorialDecision[]
   passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+
+  @@index([emailVerified])
+}
+
+/// FR-AUTH-1 — single-use, hashed, expiring email confirmation tokens.
+/// Only the SHA-256 hash is stored so a database leak cannot be replayed.
+model EmailVerificationToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  /// Throttles "resend verification" abuse (FR-AUTH-1c).
+  sentCount  Int       @default(1)
+  lastSentAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model PasswordResetToken {

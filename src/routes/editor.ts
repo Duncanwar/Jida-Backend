@@ -6,13 +6,18 @@ import { EditorialDecisionType, ManuscriptStatus, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
-import { authMiddleware, requireRole, type AuthedRequest } from "../middleware/auth.js";
+import {
+  authMiddleware,
+  requireRole,
+  requireVerifiedEmail,
+  type AuthedRequest,
+} from "../middleware/auth.js";
 import { notifyAuthorPublished, notifyAuthorStatus } from "../services/notifications.js";
 import { slugify } from "../utils/slug.js";
 import { sendReviewerAssignmentEmail } from "./reviewer.js";
 
 export const editorRouter = Router();
-editorRouter.use(authMiddleware, requireRole(Role.EDITOR, Role.ADMIN));
+editorRouter.use(authMiddleware, requireVerifiedEmail, requireRole(Role.EDITOR, Role.ADMIN));
 
 /** FR-E3 — list available reviewers so editors can assign them. */
 editorRouter.get(

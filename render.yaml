@@ -56,3 +56,16 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      # Public frontend URL — verification and reset emails link here.
+      - key: APP_URL
+        sync: false
+      # Email verification (FR-AUTH-1)
+      - key: EMAIL_VERIFICATION_TTL_HOURS
+        value: "24"
+      - key: EMAIL_VERIFICATION_RESEND_COOLDOWN_SEC
+        value: "60"
+      - key: EMAIL_VERIFICATION_MAX_SENDS
+        value: "5"
+      # Google sign-in (FR-AUTH-2) — leave unset to disable the feature.
+      - key: GOOGLE_CLIENT_ID
+        sync: false

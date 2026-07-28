@@ -3,11 +3,13 @@ import path from "node:path";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { notifyReviewerDeadlineApproaching } from "./notifications.js";
+import { purgeExpiredVerificationTokens } from "./emailVerification.js";
 
 /**
  * Background jobs required by the SRS:
  *  - FR-R6: notify reviewers of approaching review deadlines via email.
  *  - DB-03 / RM-01: perform automated daily backups (weekly minimum required).
+ *  - FR-AUTH-1: expire and purge stale email verification tokens.
  */
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly tick
@@ -133,11 +135,24 @@ async function tick(): Promise<void> {
   } catch (err) {
     console.error("[scheduler] backup job failed", err);
   }
+
+  // FR-AUTH-1 — expired verification links are dead weight; clear them so the
+  // table does not grow without bound on a public signup form.
+  try {
+    const purged = await purgeExpiredVerificationTokens();
+    if (purged > 0) {
+      console.info(`[scheduler] purged ${purged} expired verification token(s)`);
+    }
+  } catch (err) {
+    console.error("[scheduler] verification token purge failed", err);
+  }
 }
 
 export function startScheduler(): void {
   void tick();
   const timer = setInterval(() => void tick(), CHECK_INTERVAL_MS);
   timer.unref();
-  console.info("[scheduler] started (deadline reminders hourly, backups daily)");
+  console.info(
+    "[scheduler] started (deadline reminders hourly, backups daily, token purge hourly)",
+  );
 }

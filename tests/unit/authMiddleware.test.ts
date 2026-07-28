@@ -1,7 +1,12 @@
 import type { Response } from "express";
 import { describe, expect, it, vi } from "vitest";
 import { Role } from "@prisma/client";
-import { authMiddleware, requireRole, type AuthedRequest } from "../../src/middleware/auth.js";
+import {
+  authMiddleware,
+  requireRole,
+  requireVerifiedEmail,
+  type AuthedRequest,
+} from "../../src/middleware/auth.js";
 import { signAccessToken } from "../../src/utils/jwt.js";
 
 function mockRes() {
@@ -35,7 +40,52 @@ describe("authMiddleware", () => {
     const next = vi.fn();
     authMiddleware(req, mockRes(), next);
     expect(next).toHaveBeenCalledOnce();
-    expect(req.user).toEqual({ id: "user-42", role: Role.EDITOR });
+    expect(req.user).toEqual({ id: "user-42", role: Role.EDITOR, emailVerified: true });
+  });
+
+  it("carries the email-verified claim through from the token", () => {
+    const token = signAccessToken("user-43", Role.AUTHOR, false);
+    const req = { headers: { authorization: `Bearer ${token}` } } as AuthedRequest;
+    authMiddleware(req, mockRes(), vi.fn());
+    expect(req.user?.emailVerified).toBe(false);
+  });
+});
+
+describe("requireVerifiedEmail", () => {
+  it("returns 401 when no user is attached", () => {
+    const res = mockRes();
+    const next = vi.fn();
+    requireVerifiedEmail({ headers: {} } as AuthedRequest, res, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("blocks an unverified user with 403", () => {
+    const res = mockRes();
+    const next = vi.fn();
+    const req = {
+      user: { id: "u", role: Role.AUTHOR, emailVerified: false },
+    } as AuthedRequest;
+    requireVerifiedEmail(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "EMAIL_NOT_VERIFIED" }),
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("passes a verified user through", () => {
+    const next = vi.fn();
+    const req = { user: { id: "u", role: Role.AUTHOR, emailVerified: true } } as AuthedRequest;
+    requireVerifiedEmail(req, mockRes(), next);
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it("exempts the admin so it can never lock itself out", () => {
+    const next = vi.fn();
+    const req = { user: { id: "a", role: Role.ADMIN, emailVerified: false } } as AuthedRequest;
+    requireVerifiedEmail(req, mockRes(), next);
+    expect(next).toHaveBeenCalledOnce();
   });
 });
 

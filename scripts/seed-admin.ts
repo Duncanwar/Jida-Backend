@@ -23,6 +23,8 @@ async function main(): Promise<void> {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
+  // The admin is the one account exempt from email verification (FR-AUTH-1):
+  // it is provisioned out-of-band and must never be able to lock itself out.
   const admin = await prisma.user.upsert({
     where: { email },
     create: {
@@ -31,8 +33,15 @@ async function main(): Promise<void> {
       role: Role.ADMIN,
       firstName: "System",
       lastName: "Admin",
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
     },
-    update: { passwordHash, role: Role.ADMIN },
+    update: {
+      passwordHash,
+      role: Role.ADMIN,
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
+    },
   });
 
   console.info(`Admin account ready: ${admin.email} (${admin.id})`);

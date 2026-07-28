@@ -74,6 +74,12 @@ adminRouter.post(
         firstName: firstName || undefined,
         lastName: rest.length ? rest.join(" ") : undefined,
         affiliation: body.institution,
+        // FR-AUTH-1 — accounts provisioned by an admin are created verified.
+        // The admin vouches for the address and hands over the password
+        // out-of-band; no verification email is sent, so leaving these
+        // unverified would create accounts that can never sign in.
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
       },
       select: {
         id: true,

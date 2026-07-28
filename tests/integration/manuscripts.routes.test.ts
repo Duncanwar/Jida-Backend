@@ -5,13 +5,19 @@ import { prismaMock, resetPrismaMock } from "../helpers/prismaMock.js";
 import { signAccessToken } from "../../src/utils/jwt.js";
 
 vi.mock("../../src/lib/prisma.js", () => ({ prisma: prismaMock }));
-vi.mock("../../src/services/email.js", () => ({ sendMail: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("../../src/services/email.js", () => ({
+  sendMail: vi.fn().mockResolvedValue(undefined),
+  sendMailSafe: vi.fn().mockResolvedValue(true),
+  verifyEmailTransport: vi.fn().mockResolvedValue(true),
+}));
 vi.mock("../../src/services/notifications.js", () => ({
   notifyAuthorStatus: vi.fn().mockResolvedValue(undefined),
   notifyEditorsNewSubmission: vi.fn().mockResolvedValue(undefined),
+  notifyAuthorSubmissionReceived: vi.fn().mockResolvedValue(true),
 }));
 
 const { createApp } = await import("../../src/app.js");
+const notifications = await import("../../src/services/notifications.js");
 const app = createApp();
 
 const authorToken = signAccessToken("author-1", Role.AUTHOR);
@@ -127,7 +133,7 @@ describe("POST /api/manuscripts (submission)", () => {
     expect(res.body.error).toMatch(/closed/i);
   });
 
-  it("creates a manuscript with its first file version and notifies editors", async () => {
+  function mockSuccessfulSubmission() {
     prismaMock.journalSettings.upsert.mockResolvedValue({
       id: 1,
       openForSubmissions: true,
@@ -136,10 +142,26 @@ describe("POST /api/manuscripts (submission)", () => {
     prismaMock.manuscript.create.mockResolvedValue({
       id: "m-new",
       title: "T",
-      files: [{ id: "f1", versionLabel: 1, isLatest: true }],
+      createdAt: new Date("2026-07-27T10:00:00Z"),
+      files: [
+        {
+          id: "f1",
+          versionLabel: 1,
+          isLatest: true,
+          originalName: "paper.pdf",
+          sizeBytes: 13,
+        },
+      ],
     });
+    prismaMock.user.findUniqueOrThrow.mockResolvedValue({
+      email: "author@example.com",
+      firstName: "Ada",
+      lastName: "Lovelace",
+    });
+  }
 
-    const res = await request(app)
+  function submit() {
+    return request(app)
       .post("/api/manuscripts")
       .set("Authorization", `Bearer ${authorToken}`)
       .field("title", "T")
@@ -150,6 +172,12 @@ describe("POST /api/manuscripts (submission)", () => {
         filename: "paper.pdf",
         contentType: "application/pdf",
       });
+  }
+
+  it("creates a manuscript with its first file version and notifies editors", async () => {
+    mockSuccessfulSubmission();
+
+    const res = await submit();
 
     expect(res.status).toBe(201);
     expect(res.body.id).toBe("m-new");
@@ -157,7 +185,30 @@ describe("POST /api/manuscripts (submission)", () => {
     expect(arg.data.authorId).toBe("author-1");
     expect(arg.data.keywords).toEqual(["ai", "ml", "nlp"]);
     expect(arg.data.files.create.versionLabel).toBe(1);
-    const { notifyEditorsNewSubmission } = await import("../../src/services/notifications.js");
-    expect(notifyEditorsNewSubmission).toHaveBeenCalledWith("T");
+    expect(notifications.notifyEditorsNewSubmission).toHaveBeenCalledWith("T", "Ada Lovelace");
+  });
+
+  // Requirement 2 — the author must get the upload in their own inbox.
+  it("emails the author a receipt for their submission", async () => {
+    mockSuccessfulSubmission();
+
+    await submit();
+
+    expect(notifications.notifyAuthorSubmissionReceived).toHaveBeenCalledOnce();
+    const receipt = vi.mocked(notifications.notifyAuthorSubmissionReceived).mock.calls[0][0];
+    expect(receipt.email).toBe("author@example.com");
+    expect(receipt.title).toBe("T");
+    expect(receipt.manuscriptId).toBe("m-new");
+    expect(receipt.fileName).toBe("paper.pdf");
+    expect(receipt.isRevision).toBeFalsy();
+  });
+
+  it("still returns 201 when the receipt email fails — the upload already succeeded", async () => {
+    mockSuccessfulSubmission();
+    vi.mocked(notifications.notifyAuthorSubmissionReceived).mockResolvedValueOnce(false);
+
+    const res = await submit();
+
+    expect(res.status).toBe(201);
   });
 });

@@ -6,8 +6,17 @@ import { Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
-import { authMiddleware, requireRole, type AuthedRequest } from "../middleware/auth.js";
-import { notifyAuthorStatus, notifyEditorsNewSubmission } from "../services/notifications.js";
+import {
+  authMiddleware,
+  requireRole,
+  requireVerifiedEmail,
+  type AuthedRequest,
+} from "../middleware/auth.js";
+import {
+  notifyAuthorStatus,
+  notifyAuthorSubmissionReceived,
+  notifyEditorsNewSubmission,
+} from "../services/notifications.js";
 import { v4 as uuidv4 } from "uuid";
 
 const ALLOWED_MIME = new Set([
@@ -46,20 +55,22 @@ const upload = multer({
 
 export const manuscriptsRouter = Router();
 
-manuscriptsRouter.use(authMiddleware, requireRole(Role.AUTHOR, Role.ADMIN));
+manuscriptsRouter.use(
+  authMiddleware,
+  requireVerifiedEmail,
+  requireRole(Role.AUTHOR, Role.ADMIN),
+);
 
 manuscriptsRouter.post(
   "/",
   upload.single("file"),
   asyncHandler(async (req: AuthedRequest, res) => {
-    console.log(req.body.title)
     const title = req.body?.title as string | undefined;
     const abstract = req.body?.abstract as string | undefined;
     const keywordsRaw = req.body?.keywords as string | undefined;
     const references = req.body?.references as string | undefined;
 
     if (!req.file || !title || !abstract || !references) {
-      console.warn("Invalid", title)
       res.status(400).json({ error: "file, title, abstract, and references are required" });
       return;
     }
@@ -104,7 +115,29 @@ manuscriptsRouter.post(
       include: { files: true },
     });
 
-    await notifyEditorsNewSubmission(manuscript.title);
+    const author = await prisma.user.findUniqueOrThrow({
+      where: { id: req.user!.id },
+      select: { email: true, firstName: true, lastName: true },
+    });
+    const authorName = [author.firstName, author.lastName].filter(Boolean).join(" ") || null;
+    const uploadedFile = manuscript.files[0];
+
+    // Requirement 2 (FR-A3) — the author gets their own receipt in the inbox,
+    // not just the editorial team. Both are non-blocking: the manuscript is
+    // already stored, so a mail failure must not fail the upload.
+    await Promise.all([
+      notifyAuthorSubmissionReceived({
+        email: author.email,
+        name: authorName,
+        title: manuscript.title,
+        manuscriptId: manuscript.id,
+        fileName: uploadedFile.originalName,
+        fileSizeBytes: uploadedFile.sizeBytes,
+        submittedAt: manuscript.createdAt,
+        versionLabel: uploadedFile.versionLabel,
+      }),
+      notifyEditorsNewSubmission(manuscript.title, authorName),
+    ]);
 
     res.status(201).json(manuscript);
   }),
@@ -229,8 +262,27 @@ manuscriptsRouter.post(
       }),
     ]);
 
-    const author = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
-    await notifyAuthorStatus(author.email, manuscript.title, "UNDER_REVIEW");
+    const author = await prisma.user.findUniqueOrThrow({
+      where: { id: req.user!.id },
+      select: { email: true, firstName: true, lastName: true },
+    });
+
+    // Requirement 2 (FR-A3) — a revision upload is also an upload, so the
+    // author receives a receipt for it alongside the status-change notice.
+    await Promise.all([
+      notifyAuthorSubmissionReceived({
+        email: author.email,
+        name: [author.firstName, author.lastName].filter(Boolean).join(" ") || null,
+        title: manuscript.title,
+        manuscriptId: manuscript.id,
+        fileName: req.file.originalname,
+        fileSizeBytes: req.file.size,
+        submittedAt: new Date(),
+        versionLabel: nextVersion,
+        isRevision: true,
+      }),
+      notifyAuthorStatus(author.email, manuscript.title, "UNDER_REVIEW"),
+    ]);
 
     const updated = await prisma.manuscript.findUniqueOrThrow({
       where: { id: manuscript.id },

@@ -8,6 +8,8 @@ import { vi } from "vitest";
 function model() {
   return {
     findUnique: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
+    findFirstOrThrow: vi.fn(),
     findFirst: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),
@@ -26,6 +28,7 @@ function model() {
 export const prismaMock = {
   user: model(),
   passwordResetToken: model(),
+  emailVerificationToken: model(),
   journalSettings: model(),
   manuscript: model(),
   manuscriptFile: model(),

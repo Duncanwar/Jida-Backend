@@ -1,0 +1,86 @@
+{
+  "createdAt": "2026-08-09T19:57:28.598Z",
+  "users": [
+    {
+      "id": "708e4228-d357-4070-a70d-2d658783e069",
+      "email": "admin@admin.com",
+      "role": "ADMIN",
+      "firstName": "Admin",
+      "lastName": "Admin",
+      "affiliation": null,
+      "createdAt": "2026-07-20T18:49:35.013Z"
+    },
+    {
+      "id": "97d0923d-0a68-47a6-8ccf-66bf6c584fa4",
+      "email": "nda.duncan@gmail.com",
+      "role": "AUTHOR",
+      "firstName": "NDANYUZWE",
+      "lastName": "DUNCAN",
+      "affiliation": null,
+      "createdAt": "2026-08-06T20:11:21.401Z"
+    },
+    {
+      "id": "59c8d1b7-99ab-4f93-a787-2d59a52bc1d7",
+      "email": "doroha4959@davopa.com",
+      "role": "REVIEWER",
+      "firstName": "Rose",
+      "lastName": "Reviewer",
+      "affiliation": "Sonarwa General Insurance",
+      "createdAt": "2026-08-06T21:41:15.453Z"
+    }
+  ],
+  "manuscripts": [
+    {
+      "id": "1bc512df-e944-450b-8143-4093d3119b10",
+      "authorId": "97d0923d-0a68-47a6-8ccf-66bf6c584fa4",
+      "title": "Duncan",
+      "abstract": "hello",
+      "keywords": [
+        "dsajkak"
+      ],
+      "references": "akdjakdjakaj",
+      "status": "UNDER_REVIEW",
+      "createdAt": "2026-08-06T21:18:45.050Z",
+      "updatedAt": "2026-08-06T21:47:02.719Z"
+    }
+  ],
+  "files": [
+    {
+      "id": "86c924dd-8073-4d43-82f8-e70b5ab1b63a",
+      "manuscriptId": "1bc512df-e944-450b-8143-4093d3119b10",
+      "storedName": "dad1d11c-4084-4317-bbb6-fe02d7278059.pdf",
+      "originalName": "Assignment_2026.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 202601,
+      "versionLabel": 1,
+      "isLatest": true,
+      "source": "AUTHOR",
+      "remarks": null,
+      "createdAt": "2026-08-06T21:18:45.050Z"
+    }
+  ],
+  "assignments": [
+    {
+      "id": "f10b7427-d392-4ce5-a4f3-1177a9a43b79",
+      "manuscriptId": "1bc512df-e944-450b-8143-4093d3119b10",
+      "reviewerId": "59c8d1b7-99ab-4f93-a787-2d59a52bc1d7",
+      "assignedById": "708e4228-d357-4070-a70d-2d658783e069",
+      "deadline": "2026-08-14T00:00:00.000Z",
+      "progress": "NOT_STARTED",
+      "createdAt": "2026-08-06T21:46:29.897Z",
+      "updatedAt": "2026-08-06T21:46:44.771Z"
+    }
+  ],
+  "reviews": [],
+  "decisions": [],
+  "issues": [],
+  "publications": [],
+  "settings": [
+    {
+      "id": 1,
+      "submissionDeadline": null,
+      "openForSubmissions": true,
+      "updatedAt": "2026-06-08T17:25:58.804Z"
+    }
+  ]
+}

@@ -13,9 +13,34 @@ import {
   type AuthedRequest,
 } from "../middleware/auth.js";
 import { notifyEditorPendingDecision, notifyReviewerAssigned } from "../services/notifications.js";
+import { manuscriptUpload } from "../utils/upload.js";
 
 export const reviewerRouter = Router();
 reviewerRouter.use(authMiddleware, requireVerifiedEmail, requireRole(Role.REVIEWER, Role.ADMIN));
+
+/** Shared shape for the reviewer's `Assignment[]` type — flattens the nested
+ * `manuscript`/`review` relations the frontend expects at the top level. */
+function toAssignmentDTO(a: {
+  id: string;
+  manuscriptId: string;
+  deadline: Date;
+  progress: string;
+  manuscript: { id: string; title: string; abstract: string; keywords: string[] };
+  review: { recommendation: string; commentsToAuthor: string; commentsToEditor: string } | null;
+}) {
+  return {
+    id: a.id,
+    manuscriptId: a.manuscriptId,
+    manuscriptTitle: a.manuscript.title,
+    abstract: a.manuscript.abstract,
+    keywords: a.manuscript.keywords,
+    deadline: a.deadline,
+    progress: a.progress,
+    recommendation: a.review?.recommendation,
+    commentsToAuthor: a.review?.commentsToAuthor,
+    commentsToEditor: a.review?.commentsToEditor,
+  };
+}
 
 reviewerRouter.get(
   "/assignments",
@@ -37,7 +62,7 @@ reviewerRouter.get(
         review: true,
       },
     });
-    res.json(list);
+    res.json(list.map(toAssignmentDTO));
   }),
 );
 
@@ -88,9 +113,9 @@ reviewerRouter.patch(
     }
     const row = await prisma.reviewAssignment.findUniqueOrThrow({
       where: { id: req.params.id },
-      include: { manuscript: true },
+      include: { manuscript: true, review: true },
     });
-    res.json(row);
+    res.json(toAssignmentDTO(row));
   }),
 );
 
@@ -102,6 +127,7 @@ const reviewSchema = z.object({
 
 reviewerRouter.post(
   "/assignments/:id/review",
+  manuscriptUpload.single("file"),
   asyncHandler(async (req: AuthedRequest, res) => {
     const body = reviewSchema.parse(req.body);
     const assignment = await prisma.reviewAssignment.findFirst({
@@ -125,6 +151,14 @@ reviewerRouter.post(
           commentsToAuthor: body.commentsToAuthor,
           commentsToEditor: body.commentsToEditor,
           recommendation: body.recommendation,
+          ...(req.file
+            ? {
+                attachmentStoredName: req.file.filename,
+                attachmentOriginalName: req.file.originalname,
+                attachmentMimeType: req.file.mimetype,
+                attachmentSizeBytes: req.file.size,
+              }
+            : {}),
         },
       });
       await tx.reviewAssignment.update({
@@ -167,7 +201,20 @@ reviewerRouter.get(
         },
       },
     });
-    res.json(reviews);
+    // Same `Assignment[]`-shaped DTO as /assignments — the frontend's History
+    // tab reads `manuscriptTitle`/`recommendation` at the top level, but a
+    // `Review` row nests everything under `assignment`/`assignment.manuscript`.
+    const flattened = reviews.map((r) => ({
+      id: r.id,
+      manuscriptId: r.assignment.manuscript.id,
+      manuscriptTitle: r.assignment.manuscript.title,
+      deadline: r.assignment.deadline,
+      progress: r.assignment.progress,
+      recommendation: r.recommendation,
+      commentsToAuthor: r.commentsToAuthor,
+      commentsToEditor: r.commentsToEditor,
+    }));
+    res.json(flattened);
   }),
 );
 

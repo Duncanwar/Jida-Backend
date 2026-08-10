@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
 import { z } from "zod";
-import { EditorialDecisionType, ManuscriptStatus, Role } from "@prisma/client";
+import { EditorialDecisionType, FileSource, ManuscriptStatus, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
@@ -12,8 +12,13 @@ import {
   requireVerifiedEmail,
   type AuthedRequest,
 } from "../middleware/auth.js";
-import { notifyAuthorPublished, notifyAuthorStatus } from "../services/notifications.js";
+import {
+  notifyAuthorEditedFile,
+  notifyAuthorPublished,
+  notifyAuthorStatus,
+} from "../services/notifications.js";
 import { slugify } from "../utils/slug.js";
+import { manuscriptUpload } from "../utils/upload.js";
 import { sendReviewerAssignmentEmail } from "./reviewer.js";
 
 export const editorRouter = Router();
@@ -46,10 +51,42 @@ editorRouter.get(
       include: {
         author: { select: { id: true, email: true, firstName: true, lastName: true } },
         files: { where: { isLatest: true }, take: 1 },
-        _count: { select: { assignments: true } },
+        assignments: {
+          include: {
+            reviewer: { select: { id: true, email: true, firstName: true, lastName: true } },
+            review: true,
+          },
+        },
       },
     });
-    res.json(list);
+    // The frontend's `EditorSubmission`/`Assignment` types expect flat
+    // `authorName`/`recommendation` fields — Prisma only gives nested
+    // relations, so map them here instead of leaving those fields undefined.
+    const flattened = list.map((m) => ({
+      id: m.id,
+      title: m.title,
+      status: m.status,
+      authorName: [m.author.firstName, m.author.lastName].filter(Boolean).join(" ") || m.author.email,
+      assignments: m.assignments.map((a) => ({
+        id: a.id,
+        manuscriptId: a.manuscriptId,
+        deadline: a.deadline,
+        progress: a.progress,
+        recommendation: a.review?.recommendation,
+        commentsToAuthor: a.review?.commentsToAuthor,
+        commentsToEditor: a.review?.commentsToEditor,
+        reviewId: a.review?.id,
+        hasAttachment: Boolean(a.review?.attachmentStoredName),
+        reviewer: a.reviewer
+          ? {
+              id: a.reviewer.id,
+              email: a.reviewer.email,
+              name: [a.reviewer.firstName, a.reviewer.lastName].filter(Boolean).join(" ") || undefined,
+            }
+          : undefined,
+      })),
+    }));
+    res.json(flattened);
   }),
 );
 
@@ -138,6 +175,34 @@ editorRouter.post(
       include: { assignments: { include: { reviewer: true, review: true } } },
     });
     res.json(updated);
+  }),
+);
+
+/** Unassign a reviewer. Refuses to drop a completed review — that's data, not a stray link. */
+editorRouter.delete(
+  "/manuscripts/:id/assignments/:reviewerId",
+  asyncHandler(async (req, res) => {
+    const assignment = await prisma.reviewAssignment.findUnique({
+      where: {
+        manuscriptId_reviewerId: {
+          manuscriptId: req.params.id,
+          reviewerId: req.params.reviewerId,
+        },
+      },
+      include: { review: true },
+    });
+    if (!assignment) {
+      res.status(404).json({ error: "Assignment not found" });
+      return;
+    }
+    if (assignment.review) {
+      res.status(409).json({
+        error: "Cannot unassign — a review has already been submitted for this manuscript.",
+      });
+      return;
+    }
+    await prisma.reviewAssignment.delete({ where: { id: assignment.id } });
+    res.status(204).end();
   }),
 );
 
@@ -317,5 +382,80 @@ editorRouter.get(
       return;
     }
     res.download(abs, file.originalName);
+  }),
+);
+
+const editedFileSchema = z.object({
+  remarks: z.string().min(1, "Remarks are required"),
+});
+
+/** Editor uploads a new version of the manuscript with remarks for the author. */
+editorRouter.post(
+  "/manuscripts/:id/edited-file",
+  manuscriptUpload.single("file"),
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.file) {
+      res.status(400).json({ error: "file is required" });
+      return;
+    }
+    const body = editedFileSchema.parse(req.body);
+    const manuscript = await prisma.manuscript.findUnique({ where: { id: req.params.id } });
+    if (!manuscript) {
+      res.status(404).json({ error: "Manuscript not found" });
+      return;
+    }
+
+    const latest = await prisma.manuscriptFile.findFirst({
+      where: { manuscriptId: manuscript.id },
+      orderBy: { versionLabel: "desc" },
+    });
+    const nextVersion = (latest?.versionLabel ?? 0) + 1;
+
+    await prisma.$transaction([
+      prisma.manuscriptFile.updateMany({
+        where: { manuscriptId: manuscript.id },
+        data: { isLatest: false },
+      }),
+      prisma.manuscriptFile.create({
+        data: {
+          manuscriptId: manuscript.id,
+          storedName: req.file.filename,
+          originalName: req.file.originalname,
+          mimeType: req.file.mimetype,
+          sizeBytes: req.file.size,
+          versionLabel: nextVersion,
+          isLatest: true,
+          source: FileSource.EDITOR,
+          remarks: body.remarks,
+        },
+      }),
+    ]);
+
+    const author = await prisma.user.findUniqueOrThrow({ where: { id: manuscript.authorId } });
+    await notifyAuthorEditedFile(author.email, manuscript.title, body.remarks);
+
+    const updated = await prisma.manuscript.findUniqueOrThrow({
+      where: { id: manuscript.id },
+      include: { files: { orderBy: { versionLabel: "desc" } } },
+    });
+    res.status(201).json(updated);
+  }),
+);
+
+/** Editor download of a reviewer's attached file, if they included one with their review. */
+editorRouter.get(
+  "/reviews/:reviewId/download",
+  asyncHandler(async (req, res) => {
+    const review = await prisma.review.findUnique({ where: { id: req.params.reviewId } });
+    if (!review || !review.attachmentStoredName) {
+      res.status(404).json({ error: "No attachment for this review" });
+      return;
+    }
+    const abs = path.join(env.UPLOAD_DIR, review.attachmentStoredName);
+    if (!fs.existsSync(abs)) {
+      res.status(404).json({ error: "File missing on server" });
+      return;
+    }
+    res.download(abs, review.attachmentOriginalName ?? review.attachmentStoredName);
   }),
 );

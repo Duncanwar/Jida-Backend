@@ -88,6 +88,27 @@ export async function notifyAuthorStatus(
   });
 }
 
+/** Editor uploaded a new file version (with remarks) on top of the author's submission. */
+export async function notifyAuthorEditedFile(
+  email: string,
+  title: string,
+  remarks: string,
+): Promise<void> {
+  await sendMailSafe({
+    to: email,
+    ...notificationEmail({
+      heading: "Editor uploaded a revised file",
+      subject: `JIDA: an edited version of "${title}" is ready`,
+      lines: [
+        `An editor has uploaded a new version of your manuscript "${title}", with the following remarks:`,
+        remarks,
+      ],
+      actionUrl: authorDashboard(),
+      actionLabel: "View my submission",
+    }),
+  });
+}
+
 export async function notifyReviewerAssigned(
   email: string,
   title: string,

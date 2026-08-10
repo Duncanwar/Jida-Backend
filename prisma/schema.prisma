@@ -42,6 +42,12 @@ enum EditorialDecisionType {
   REQUEST_REVISION
 }
 
+/// Who produced a given manuscript file version.
+enum FileSource {
+  AUTHOR
+  EDITOR
+}
+
 /// How the account authenticates. LOCAL = email + password, GOOGLE = Google
 /// Identity Services, BOTH = a local account that has been linked to Google.
 enum AuthProvider {
@@ -151,6 +157,9 @@ model ManuscriptFile {
   sizeBytes      Int
   versionLabel   Int        @default(1)
   isLatest       Boolean    @default(true)
+  source         FileSource @default(AUTHOR)
+  /// Editor's notes on this version. Only set when source = EDITOR.
+  remarks        String?    @db.Text
   createdAt      DateTime   @default(now())
 
   @@index([manuscriptId])
@@ -184,6 +193,11 @@ model Review {
   commentsToAuthor   String               @db.Text
   commentsToEditor   String               @db.Text
   recommendation     ReviewRecommendation
+  /// Optional annotated/marked-up file the reviewer attaches alongside their comments.
+  attachmentStoredName   String?
+  attachmentOriginalName String?
+  attachmentMimeType     String?
+  attachmentSizeBytes    Int?
   createdAt          DateTime             @default(now())
 
   @@index([reviewerId])

@@ -1,0 +1,104 @@
+{
+  "createdAt": "2026-08-08T18:29:05.712Z",
+  "users": [
+    {
+      "id": "3c148044-b610-45d4-9992-60bc45913171",
+      "email": "darreniraguha51@gmail.com",
+      "role": "AUTHOR",
+      "firstName": "Iraguha",
+      "lastName": "Darren",
+      "affiliation": "Adventist University of Central Africa",
+      "createdAt": "2026-08-06T22:32:31.050Z"
+    },
+    {
+      "id": "9e731400-1081-452d-9323-475b8fccc4d3",
+      "email": "semuhungu.author@author.com",
+      "role": "AUTHOR",
+      "firstName": "Semuhungu",
+      "lastName": "Jackson",
+      "affiliation": "Adventist University of Central Africa",
+      "createdAt": "2026-08-07T14:45:20.696Z"
+    },
+    {
+      "id": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "email": "iraguhadarren2@gmail.com",
+      "role": "REVIEWER",
+      "firstName": "Serukundo",
+      "lastName": "Samson",
+      "affiliation": "Adventist University of Central Africa",
+      "createdAt": "2026-08-06T23:00:55.389Z"
+    },
+    {
+      "id": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "email": "iraguhadarren7@gmail.com",
+      "role": "EDITOR",
+      "firstName": "Mucyo",
+      "lastName": "Jean",
+      "affiliation": "Adventist University of Central Africa",
+      "createdAt": "2026-08-06T22:48:36.711Z"
+    }
+  ],
+  "manuscripts": [
+    {
+      "id": "a041b20b-b2ec-412a-be16-5a1a56914aaa",
+      "authorId": "3c148044-b610-45d4-9992-60bc45913171",
+      "title": "Effect of Risk Management on Reduction of Non-Performing Loans of  Selected Commercial Banks in Rwanda",
+      "abstract": "This study investigated the effect of risk management on reduction of non-performing loans in \r\ncommercial banks in Rwanda. This is due to the constant affirmation that profitability of \r\ncommercial banks keep decreasing. Objective of the study is to assess the effect of risk management \r\non non-performing loans in commercial banks in Rwanda. Researchers assume that there is no \r\nsignificant effect of risk management on reduction of non-performing loans in commercial banks \r\nin Rwanda. This research used descriptive survey research design. Population of the study are \r\n76 employees of Equity bank and Cogebank. These are composed of all manager, head of \r\ndepartment, credit team, risk management team, audit team and financial department team of both \r\nEquity Bank Rwanda Plc headquarter and Cogebanque Rwanda Plc headquarter. The researcher \r\nused universal sampling technique and selected all the identified members of the population as the \r\npart of the study. Results for hypothesis testing indicated that the adjusted R2 is 0.880 indicating \r\nthat the risk management components contribute to the reduction of non-performing loans by \r\n88.0%, while 0.120 representing 12.0% of reduction of non-performing loans comes from other \r\nvariables that are not included in the model test. The selected commercial banks were \r\nrecommended to find ways to improve their profitability levels since both of them were \r\nexperiencing low levels of ROA of around 1 to 2%, yet the accepted good level of ROA is 5%",
+      "keywords": [
+        "risk management",
+        "non-performing loans"
+      ],
+      "references": "Albu, F. (2019). Internal risk assesment. The process of reporting and interpretation of \r\norganization risk.\r\nBizuayehu, M. (2015). The Impact of Credit Risk on Reduction of non-performing loans of Banks \r\nin Ethiopia. Addis Ababa University.\r\nBNR. (2022). Annual report on financial institutions. Kigali.\r\nCahill. (2016). Audit and financial risk effectiveness in a multinational bank subsidiary. Journal \r\nof Banking Regulation, 7(2), 160-179.\r\nCuomo, A. (2015). Risk Controls and Financial Accountability for Not-for-Profit Boards. 2 (13) \r\n29-30.\r\nKalui, F. M., & Kiawa, E. (2015). Effects of Credit Risk Management Procedures on Reduction \r\nof non-performing loans among Microfinance Institutions (MFIs) In Kenya. International \r\nJournal of Humanities Social Sciences and Education.\r\nKevin, C. (2019). The Effect of Experience on the Use duties segregation. London: Macmillan.\r\nMateut, S. B. (2016). Trade credit, bank lending and monetary policy transmission. European \r\nEconomic Review, 50(3), 603-629.\r\nRaad, M. L. (2015). Credit Risk Management (CRM) Practices in Commercial Banks of \r\nBangladesh. International Journal of Economics Finance and Management Sciences.\r\nZietlow, J. T., & Seidner, A. G. (2017). Cash & investment management for nonprofit \r\norganizations. Boton: John Wiley and Sons.",
+      "status": "UNDER_REVIEW",
+      "createdAt": "2026-08-06T22:45:26.167Z",
+      "updatedAt": "2026-08-07T14:57:52.062Z"
+    }
+  ],
+  "files": [
+    {
+      "id": "e4d7dd05-5cf7-4bf6-a263-41b2f8f939cb",
+      "manuscriptId": "a041b20b-b2ec-412a-be16-5a1a56914aaa",
+      "storedName": "66d48473-f0f3-4fcf-a0b3-fcc05473ff6b.pdf",
+      "originalName": "JIDA December 2023-71-80.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 218478,
+      "versionLabel": 1,
+      "isLatest": true,
+      "createdAt": "2026-08-06T22:45:26.167Z"
+    }
+  ],
+  "assignments": [
+    {
+      "id": "cd2d6b24-ce17-4f27-bef6-0f0b8132f5c2",
+      "manuscriptId": "a041b20b-b2ec-412a-be16-5a1a56914aaa",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "assignedById": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "deadline": "2026-08-28T00:00:00.000Z",
+      "progress": "FINISHED_REVIEW",
+      "createdAt": "2026-08-07T14:57:43.106Z",
+      "updatedAt": "2026-08-07T15:03:18.429Z"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "d7184838-356a-4cfa-b931-cabc2d1d4dff",
+      "assignmentId": "cd2d6b24-ce17-4f27-bef6-0f0b8132f5c2",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "commentsToAuthor": "hhssgg",
+      "commentsToEditor": "dgdhs",
+      "recommendation": "ACCEPT",
+      "createdAt": "2026-08-07T15:03:18.425Z"
+    }
+  ],
+  "decisions": [],
+  "issues": [],
+  "publications": [],
+  "settings": [
+    {
+      "id": 1,
+      "submissionDeadline": null,
+      "openForSubmissions": true,
+      "updatedAt": "2026-08-06T22:35:45.119Z"
+    }
+  ]
+}

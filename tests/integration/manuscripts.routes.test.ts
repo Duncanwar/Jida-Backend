@@ -42,7 +42,7 @@ describe("manuscripts route protection", () => {
 describe("GET /api/manuscripts", () => {
   it("lists only the authenticated author's manuscripts", async () => {
     prismaMock.manuscript.findMany.mockResolvedValue([
-      { id: "m1", title: "Paper A", authorId: "author-1" },
+      { id: "m1", title: "Paper A", authorId: "author-1", decisions: [], assignments: [] },
     ]);
 
     const res = await request(app)
@@ -80,12 +80,86 @@ describe("GET /api/manuscripts/:id", () => {
       id: "m1",
       title: "Paper A",
       files: [{ id: "f1", versionLabel: 1 }],
+      decisions: [],
+      assignments: [],
     });
     const res = await request(app)
       .get("/api/manuscripts/m1")
       .set("Authorization", `Bearer ${authorToken}`);
     expect(res.status).toBe(200);
     expect(res.body.files).toHaveLength(1);
+  });
+});
+
+// Authors need to see what was said about their work, but only what is theirs
+// to see, and only once the editor has actually decided.
+describe("reviewer comments shown to the author", () => {
+  const review = {
+    id: "r1",
+    recommendation: "MINOR_REVISION",
+    commentsToAuthor: "Tighten the methodology section.",
+    commentsToEditor: "Borderline — the stats are shaky.",
+    createdAt: new Date("2026-08-01T10:00:00Z"),
+  };
+  const decision = {
+    decision: "REQUEST_REVISION",
+    notes: "Please address the reviewer.",
+    createdAt: new Date("2026-08-02T10:00:00Z"),
+  };
+
+  function mockList(decisions: unknown[]) {
+    prismaMock.manuscript.findMany.mockResolvedValue([
+      {
+        id: "m1",
+        title: "Paper A",
+        authorId: "author-1",
+        decisions,
+        assignments: [{ id: "a1", review }],
+      },
+    ]);
+    return request(app).get("/api/manuscripts").set("Authorization", `Bearer ${authorToken}`);
+  }
+
+  it("includes editorial decisions so the tracking table can show them", async () => {
+    const res = await mockList([decision]);
+    expect(res.status).toBe(200);
+    expect(res.body[0].decisions[0].notes).toBe("Please address the reviewer.");
+  });
+
+  it("releases comments to the author once a decision exists, anonymized", async () => {
+    const res = await mockList([decision]);
+    expect(res.body[0].reviews).toHaveLength(1);
+    expect(res.body[0].reviews[0]).toMatchObject({
+      reviewerLabel: "Reviewer 1",
+      recommendation: "MINOR_REVISION",
+      commentsToAuthor: "Tighten the methodology section.",
+    });
+  });
+
+  it("never leaks the confidential comments to the editor", async () => {
+    const res = await mockList([decision]);
+    expect(JSON.stringify(res.body)).not.toContain("the stats are shaky");
+  });
+
+  it("withholds reviewer comments until the editor has decided", async () => {
+    const res = await mockList([]);
+    expect(res.body[0].reviews).toEqual([]);
+  });
+
+  it("applies the same rules to a single manuscript", async () => {
+    prismaMock.manuscript.findFirst.mockResolvedValue({
+      id: "m1",
+      title: "Paper A",
+      files: [],
+      decisions: [decision],
+      assignments: [{ id: "a1", review }],
+    });
+    const res = await request(app)
+      .get("/api/manuscripts/m1")
+      .set("Authorization", `Bearer ${authorToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.reviews[0].commentsToAuthor).toBe("Tighten the methodology section.");
+    expect(res.body.reviews[0].commentsToEditor).toBeUndefined();
   });
 });
 

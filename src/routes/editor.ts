@@ -52,10 +52,15 @@ editorRouter.get(
         author: { select: { id: true, email: true, firstName: true, lastName: true } },
         files: { where: { isLatest: true }, take: 1 },
         assignments: {
+          orderBy: { createdAt: "asc" },
           include: {
             reviewer: { select: { id: true, email: true, firstName: true, lastName: true } },
             review: true,
           },
+        },
+        decisions: {
+          orderBy: { createdAt: "desc" },
+          include: { editor: { select: { firstName: true, lastName: true, email: true } } },
         },
       },
     });
@@ -67,6 +72,13 @@ editorRouter.get(
       title: m.title,
       status: m.status,
       authorName: [m.author.firstName, m.author.lastName].filter(Boolean).join(" ") || m.author.email,
+      decisions: m.decisions.map((d) => ({
+        decision: d.decision,
+        notes: d.notes,
+        createdAt: d.createdAt,
+        editorName:
+          [d.editor.firstName, d.editor.lastName].filter(Boolean).join(" ") || d.editor.email,
+      })),
       assignments: m.assignments.map((a) => ({
         id: a.id,
         manuscriptId: a.manuscriptId,
@@ -76,6 +88,7 @@ editorRouter.get(
         commentsToAuthor: a.review?.commentsToAuthor,
         commentsToEditor: a.review?.commentsToEditor,
         reviewId: a.review?.id,
+        reviewedAt: a.review?.createdAt,
         hasAttachment: Boolean(a.review?.attachmentStoredName),
         reviewer: a.reviewer
           ? {

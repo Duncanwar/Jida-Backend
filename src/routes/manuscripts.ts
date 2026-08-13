@@ -1,6 +1,6 @@
 import path from "node:path";
 import { Router } from "express";
-import { Role } from "@prisma/client";
+import { Role, type ReviewRecommendation } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
@@ -24,6 +24,54 @@ manuscriptsRouter.use(
   requireVerifiedEmail,
   requireRole(Role.AUTHOR, Role.ADMIN),
 );
+
+/** Author-facing view of a review — the reviewer's identity and their private notes to the editor are dropped. */
+interface AuthorVisibleReview {
+  reviewerLabel: string;
+  recommendation: ReviewRecommendation;
+  commentsToAuthor: string;
+  submittedAt: Date;
+}
+
+type AssignmentWithReview = {
+  review: {
+    recommendation: ReviewRecommendation;
+    commentsToAuthor: string;
+    createdAt: Date;
+  } | null;
+};
+
+/**
+ * Reviewer feedback as the author is allowed to see it.
+ *
+ * Two things are deliberately withheld. The reviewer's name and their
+ * `commentsToEditor` never cross this boundary — peer review is blind and those
+ * notes are written for the editor alone. And nothing is released until an
+ * editorial decision exists: until the editor has weighed the reviews, an
+ * author acting on them would be responding to advice the journal has not
+ * given yet.
+ *
+ * Reviewers are numbered in assignment order so the labels stay stable between
+ * requests.
+ */
+function authorVisibleReviews(
+  assignments: AssignmentWithReview[],
+  hasDecision: boolean,
+): AuthorVisibleReview[] {
+  if (!hasDecision) return [];
+  return assignments.flatMap((a, i) =>
+    a.review
+      ? [
+          {
+            reviewerLabel: `Reviewer ${i + 1}`,
+            recommendation: a.review.recommendation,
+            commentsToAuthor: a.review.commentsToAuthor,
+            submittedAt: a.review.createdAt,
+          },
+        ]
+      : [],
+  );
+}
 
 manuscriptsRouter.post(
   "/",
@@ -128,9 +176,25 @@ manuscriptsRouter.get(
       include: {
         files: { where: { isLatest: true }, take: 1 },
         publication: { select: { slug: true, publishedAt: true } },
+        // The tracking table shows editorial remarks and reviewer feedback
+        // inline, so the author does not have to open each manuscript to find
+        // out what was said about it.
+        decisions: {
+          orderBy: { createdAt: "desc" },
+          select: { decision: true, notes: true, createdAt: true },
+        },
+        assignments: {
+          orderBy: { createdAt: "asc" },
+          include: { review: true },
+        },
       },
     });
-    res.json(list);
+    res.json(
+      list.map(({ assignments, ...m }) => ({
+        ...m,
+        reviews: authorVisibleReviews(assignments, m.decisions.length > 0),
+      })),
+    );
   }),
 );
 
@@ -174,13 +238,21 @@ manuscriptsRouter.get(
           orderBy: { createdAt: "desc" },
           select: { decision: true, notes: true, createdAt: true },
         },
+        assignments: {
+          orderBy: { createdAt: "asc" },
+          include: { review: true },
+        },
       },
     });
     if (!m) {
       res.status(404).json({ error: "Manuscript not found" });
       return;
     }
-    res.json(m);
+    const { assignments, ...manuscript } = m;
+    res.json({
+      ...manuscript,
+      reviews: authorVisibleReviews(assignments, manuscript.decisions.length > 0),
+    });
   }),
 );
 

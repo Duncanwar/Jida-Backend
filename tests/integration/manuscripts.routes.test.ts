@@ -98,8 +98,17 @@ describe("reviewer comments shown to the author", () => {
     id: "r1",
     recommendation: "MINOR_REVISION",
     commentsToAuthor: "Tighten the methodology section.",
+    specificSuggestions: "Add at least 15 references, alphabetically ordered.",
     commentsToEditor: "Borderline — the stats are shaky.",
+    ratingTitle: "GOOD",
+    ratingAbstract: "MODERATE",
+    ratingLiterature: "POOR",
+    ratingMethods: "BAD",
+    ratingConclusions: "MODERATE",
+    ratingReferences: "POOR",
+    ratingStructure: "EXCELLENT",
     createdAt: new Date("2026-08-01T10:00:00Z"),
+    authorFeedback: null,
   };
   const decision = {
     decision: "REQUEST_REVISION",
@@ -141,6 +150,31 @@ describe("reviewer comments shown to the author", () => {
     expect(JSON.stringify(res.body)).not.toContain("the stats are shaky");
   });
 
+  it("releases the suggestions half of the author-facing section too", async () => {
+    const res = await mockList([decision]);
+    expect(res.body[0].reviews[0].specificSuggestions).toBe(
+      "Add at least 15 references, alphabetically ordered.",
+    );
+  });
+
+  it("never leaks the reviewer's ratings — the assessment grid is not author-facing", async () => {
+    const res = await mockList([decision]);
+    const body = JSON.stringify(res.body);
+    for (const key of [
+      "ratingTitle",
+      "ratingAbstract",
+      "ratingLiterature",
+      "ratingMethods",
+      "ratingConclusions",
+      "ratingReferences",
+      "ratingStructure",
+    ]) {
+      expect(body, `${key} must not reach the author`).not.toContain(key);
+    }
+    // The rating values themselves must be absent, not just their field names.
+    expect(res.body[0].reviews[0]).not.toHaveProperty("assessment");
+  });
+
   it("withholds reviewer comments until the editor has decided", async () => {
     const res = await mockList([]);
     expect(res.body[0].reviews).toEqual([]);
@@ -160,6 +194,65 @@ describe("reviewer comments shown to the author", () => {
     expect(res.status).toBe(200);
     expect(res.body.reviews[0].commentsToAuthor).toBe("Tighten the methodology section.");
     expect(res.body.reviews[0].commentsToEditor).toBeUndefined();
+  });
+});
+
+describe("PUT /api/manuscripts/reviews/:reviewId/feedback", () => {
+  function mockReview(authorId: string, decisionCount: number) {
+    prismaMock.review.findUnique.mockResolvedValue({
+      id: "r1",
+      assignment: {
+        manuscript: { authorId, _count: { decisions: decisionCount } },
+      },
+    });
+  }
+
+  it("records the author's rating of the reviewer's work", async () => {
+    mockReview("author-1", 1);
+    prismaMock.reviewerFeedback.upsert.mockResolvedValue({
+      rating: 4,
+      comment: "Helpful and specific.",
+    });
+
+    const res = await request(app)
+      .put("/api/manuscripts/reviews/r1/feedback")
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({ rating: 4, comment: "Helpful and specific." });
+
+    expect(res.status).toBe(200);
+    expect(res.body.rating).toBe(4);
+    const arg = prismaMock.reviewerFeedback.upsert.mock.calls[0][0];
+    expect(arg.where.reviewId).toBe("r1");
+    expect(arg.create.authorId).toBe("author-1");
+  });
+
+  it("refuses a rating outside the form's 1-5 scale", async () => {
+    mockReview("author-1", 1);
+    const res = await request(app)
+      .put("/api/manuscripts/reviews/r1/feedback")
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({ rating: 9 });
+    expect(res.status).toBe(400);
+  });
+
+  it("hides another author's review behind a 404", async () => {
+    mockReview("someone-else", 1);
+    const res = await request(app)
+      .put("/api/manuscripts/reviews/r1/feedback")
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({ rating: 3 });
+    expect(res.status).toBe(404);
+    expect(prismaMock.reviewerFeedback.upsert).not.toHaveBeenCalled();
+  });
+
+  it("refuses feedback on a review the editor has not released yet", async () => {
+    mockReview("author-1", 0);
+    const res = await request(app)
+      .put("/api/manuscripts/reviews/r1/feedback")
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({ rating: 3 });
+    expect(res.status).toBe(403);
+    expect(prismaMock.reviewerFeedback.upsert).not.toHaveBeenCalled();
   });
 });
 

@@ -2,7 +2,8 @@ import { prisma } from "../lib/prisma.js";
 import { sendMailSafe } from "./email.js";
 import { notificationEmail, submissionReceiptEmail } from "./emailTemplates.js";
 import { env } from "../config/env.js";
-import type { ManuscriptStatus } from "@prisma/client";
+import { storedRolesGranting } from "../utils/roles.js";
+import { Role, type ManuscriptStatus } from "@prisma/client";
 
 const appUrl = (): string => env.APP_URL.replace(/\/$/, "");
 
@@ -50,7 +51,7 @@ export async function notifyEditorsNewSubmission(
   authorName?: string | null,
 ): Promise<void> {
   const editors = await prisma.user.findMany({
-    where: { role: "EDITOR" },
+    where: { roles: { hasSome: storedRolesGranting(Role.EDITOR) } },
     select: { email: true },
   });
   const mail = notificationEmail({

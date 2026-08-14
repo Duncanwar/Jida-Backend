@@ -1,4 +1,4 @@
-import fs from "node:fs";
+﻿import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
@@ -7,6 +7,35 @@ import { asyncHandler } from "../middleware/asyncHandler.js";
 
 export const publicRouter = Router();
 
+/**
+ * Author details carried on every published article.
+ *
+ * The email is included deliberately: on a published article the submitting
+ * author is the corresponding author, and journals list that contact alongside
+ * the affiliation. It is only ever exposed for work that has been published —
+ * manuscripts under review never reach these routes.
+ */
+const PUBLIC_AUTHOR_SELECT = {
+  firstName: true,
+  lastName: true,
+  email: true,
+  affiliation: true,
+} as const;
+
+/** Everything the archive and the citation metadata need about an article. */
+const PUBLIC_MANUSCRIPT_SELECT = {
+  id: true,
+  title: true,
+  abstract: true,
+  keywords: true,
+  references: true,
+  author: { select: PUBLIC_AUTHOR_SELECT },
+  coAuthors: {
+    orderBy: { position: "asc" },
+    select: { fullName: true, email: true, affiliation: true, isCorresponding: true },
+  },
+} as const;
+
 publicRouter.get(
   "/issues",
   asyncHandler(async (_req, res) => {
@@ -14,6 +43,18 @@ publicRouter.get(
       orderBy: [{ year: "desc" }, { volume: "desc" }, { issueNumber: "desc" }],
       include: {
         _count: { select: { publications: true } },
+        // Everything published in the issue travels with it, so the archive can
+        // present one card per volume+issue with its contents inside rather
+        // than a flat list of articles.
+        publications: {
+          orderBy: { publishedAt: "asc" },
+          select: {
+            id: true,
+            slug: true,
+            publishedAt: true,
+            manuscript: { select: PUBLIC_MANUSCRIPT_SELECT },
+          },
+        },
       },
     });
     res.json(issues);
@@ -46,16 +87,7 @@ publicRouter.get(
       orderBy: { publishedAt: "desc" },
       include: {
         issue: true,
-        manuscript: {
-          select: {
-            id: true,
-            title: true,
-            abstract: true,
-            keywords: true,
-            references: true,
-            author: { select: { firstName: true, lastName: true, affiliation: true } },
-          },
-        },
+        manuscript: { select: PUBLIC_MANUSCRIPT_SELECT },
       },
       take: 100,
     });
@@ -70,16 +102,7 @@ publicRouter.get(
       where: { slug: req.params.slug },
       include: {
         issue: true,
-        manuscript: {
-          select: {
-            id: true,
-            title: true,
-            abstract: true,
-            keywords: true,
-            references: true,
-            author: { select: { firstName: true, lastName: true, affiliation: true } },
-          },
-        },
+        manuscript: { select: PUBLIC_MANUSCRIPT_SELECT },
       },
     });
     if (!pub) {

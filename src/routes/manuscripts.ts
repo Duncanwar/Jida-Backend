@@ -1,5 +1,6 @@
 import path from "node:path";
 import { Router } from "express";
+import { z } from "zod";
 import { Role, type ReviewRecommendation } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
@@ -27,17 +28,26 @@ manuscriptsRouter.use(
 
 /** Author-facing view of a review — the reviewer's identity and their private notes to the editor are dropped. */
 interface AuthorVisibleReview {
+  reviewId: string;
   reviewerLabel: string;
   recommendation: ReviewRecommendation;
+  /** "Comments and Suggestions to the Author(s)" — the overall evaluation. */
   commentsToAuthor: string;
+  /** The same section's reasons-and-suggestions prompt. */
+  specificSuggestions: string | null;
   submittedAt: Date;
+  /** The author's own "Feedback of Reviewer's Work to JIDA", once given. */
+  feedback: { rating: number; comment: string | null } | null;
 }
 
 type AssignmentWithReview = {
   review: {
+    id: string;
     recommendation: ReviewRecommendation;
     commentsToAuthor: string;
+    specificSuggestions: string | null;
     createdAt: Date;
+    authorFeedback: { rating: number; comment: string | null } | null;
   } | null;
 };
 
@@ -63,14 +73,46 @@ function authorVisibleReviews(
     a.review
       ? [
           {
+            reviewId: a.review.id,
             reviewerLabel: `Reviewer ${i + 1}`,
             recommendation: a.review.recommendation,
             commentsToAuthor: a.review.commentsToAuthor,
+            specificSuggestions: a.review.specificSuggestions,
             submittedAt: a.review.createdAt,
+            feedback: a.review.authorFeedback,
           },
         ]
       : [],
   );
+}
+
+const coAuthorSchema = z.object({
+  fullName: z.string().min(1, "A co-author needs a name"),
+  email: z.string().email("A co-author needs a valid email address"),
+  affiliation: z.string().optional(),
+  /** Marks a co-author who also fields correspondence about the manuscript. */
+  isCorresponding: z.coerce.boolean().optional(),
+});
+
+type CoAuthorInput = z.infer<typeof coAuthorSchema>;
+
+/**
+ * Co-authors ride along in a multipart field, so they arrive as a JSON string
+ * rather than a parsed array. Absent or empty means "no co-authors", which is
+ * perfectly normal for a single-author submission.
+ */
+function parseCoAuthors(raw: unknown): CoAuthorInput[] {
+  if (raw == null || raw === "") return [];
+  let parsed: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error("co-authors must be a JSON array");
+    }
+  }
+  if (!Array.isArray(parsed)) throw new Error("co-authors must be a JSON array");
+  return z.array(coAuthorSchema).parse(parsed);
 }
 
 manuscriptsRouter.post(
@@ -80,10 +122,22 @@ manuscriptsRouter.post(
     const title = req.body?.title as string | undefined;
     const abstract = req.body?.abstract as string | undefined;
     const keywordsRaw = req.body?.keywords as string | undefined;
+    // A reference list is optional — many authors keep references in the
+    // manuscript file itself rather than pasting them into the form.
     const references = req.body?.references as string | undefined;
 
-    if (!req.file || !title || !abstract || !references) {
-      res.status(400).json({ error: "file, title, abstract, and references are required" });
+    if (!req.file || !title || !abstract) {
+      res.status(400).json({ error: "file, title, and abstract are required" });
+      return;
+    }
+
+    // Co-authors arrive as a JSON array in a multipart field, since the rest of
+    // the submission is a file upload.
+    let coAuthors: CoAuthorInput[];
+    try {
+      coAuthors = parseCoAuthors(req.body?.coAuthors);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : "Invalid co-authors" });
       return;
     }
 
@@ -112,7 +166,20 @@ manuscriptsRouter.post(
         title,
         abstract,
         keywords,
-        references,
+        references: references?.trim() ? references : null,
+        ...(coAuthors.length
+          ? {
+              coAuthors: {
+                create: coAuthors.map((c, i) => ({
+                  fullName: c.fullName,
+                  email: c.email,
+                  affiliation: c.affiliation ?? null,
+                  isCorresponding: c.isCorresponding ?? false,
+                  position: i,
+                })),
+              },
+            }
+          : {}),
         files: {
           create: {
             storedName: req.file.filename,
@@ -124,7 +191,7 @@ manuscriptsRouter.post(
           },
         },
       },
-      include: { files: true },
+      include: { files: true, coAuthors: { orderBy: { position: "asc" } } },
     });
 
     const author = await prisma.user.findUniqueOrThrow({
@@ -183,9 +250,14 @@ manuscriptsRouter.get(
           orderBy: { createdAt: "desc" },
           select: { decision: true, notes: true, createdAt: true },
         },
+        coAuthors: { orderBy: { position: "asc" } },
         assignments: {
           orderBy: { createdAt: "asc" },
-          include: { review: true },
+          include: {
+            review: {
+              include: { authorFeedback: { select: { rating: true, comment: true } } },
+            },
+          },
         },
       },
     });
@@ -224,6 +296,63 @@ manuscriptsRouter.get(
   }),
 );
 
+const reviewerFeedbackSchema = z.object({
+  /** "Rating Result [Poor] 1-5 [Excellent]". */
+  rating: z.coerce.number().int().min(1).max(5),
+  /** "Specific evaluation to the Reviewer's review result". */
+  comment: z.string().optional(),
+});
+
+/**
+ * "Authors' Feedback of Reviewer's Work to JIDA" — the last section of the
+ * review form, and the only one the author fills in. Upserted so an author can
+ * correct a rating they have already given.
+ *
+ * Guarded the same way the reviewer comments themselves are: the author must
+ * own the manuscript, and nothing can be rated until an editorial decision has
+ * released the review to them.
+ */
+manuscriptsRouter.put(
+  "/reviews/:reviewId/feedback",
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const body = reviewerFeedbackSchema.parse(req.body);
+    const review = await prisma.review.findUnique({
+      where: { id: req.params.reviewId },
+      include: {
+        assignment: {
+          include: {
+            manuscript: { select: { authorId: true, _count: { select: { decisions: true } } } },
+          },
+        },
+      },
+    });
+
+    if (!review || review.assignment.manuscript.authorId !== req.user!.id) {
+      res.status(404).json({ error: "Review not found" });
+      return;
+    }
+    if (review.assignment.manuscript._count.decisions === 0) {
+      res.status(403).json({
+        error: "This review is released once the editor reaches a decision.",
+      });
+      return;
+    }
+
+    const saved = await prisma.reviewerFeedback.upsert({
+      where: { reviewId: review.id },
+      create: {
+        reviewId: review.id,
+        authorId: req.user!.id,
+        rating: body.rating,
+        comment: body.comment?.trim() || null,
+      },
+      update: { rating: body.rating, comment: body.comment?.trim() || null },
+      select: { rating: true, comment: true, createdAt: true, updatedAt: true },
+    });
+    res.json(saved);
+  }),
+);
+
 manuscriptsRouter.get(
   "/:id",
   asyncHandler(async (req: AuthedRequest, res) => {
@@ -232,6 +361,7 @@ manuscriptsRouter.get(
       include: {
         files: { orderBy: { versionLabel: "desc" } },
         publication: true,
+        coAuthors: { orderBy: { position: "asc" } },
         // So the author can see why a revision was requested or a decision
         // was made, not just the resulting status.
         decisions: {
@@ -240,7 +370,11 @@ manuscriptsRouter.get(
         },
         assignments: {
           orderBy: { createdAt: "asc" },
-          include: { review: true },
+          include: {
+            review: {
+              include: { authorFeedback: { select: { rating: true, comment: true } } },
+            },
+          },
         },
       },
     });

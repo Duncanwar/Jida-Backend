@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
 import { z } from "zod";
-import { ReviewerProgress, Role, ReviewRecommendation } from "@prisma/client";
+import { ReviewerProgress, Role, type Review } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
@@ -14,6 +14,8 @@ import {
 } from "../middleware/auth.js";
 import { notifyEditorPendingDecision, notifyReviewerAssigned } from "../services/notifications.js";
 import { manuscriptUpload } from "../utils/upload.js";
+import { storedRolesGranting } from "../utils/roles.js";
+import { reviewFormSchema, toFullReview } from "../utils/reviewForm.js";
 
 export const reviewerRouter = Router();
 reviewerRouter.use(authMiddleware, requireVerifiedEmail, requireRole(Role.REVIEWER, Role.ADMIN));
@@ -25,8 +27,8 @@ function toAssignmentDTO(a: {
   manuscriptId: string;
   deadline: Date;
   progress: string;
-  manuscript: { id: string; title: string; abstract: string; keywords: string[] };
-  review: { recommendation: string; commentsToAuthor: string; commentsToEditor: string } | null;
+  manuscript: { id: string; title: string; abstract: string; keywords: string[]; createdAt: Date };
+  review: Review | null;
 }) {
   return {
     id: a.id,
@@ -34,11 +36,14 @@ function toAssignmentDTO(a: {
     manuscriptTitle: a.manuscript.title,
     abstract: a.manuscript.abstract,
     keywords: a.manuscript.keywords,
+    submittedAt: a.manuscript.createdAt,
     deadline: a.deadline,
     progress: a.progress,
     recommendation: a.review?.recommendation,
     commentsToAuthor: a.review?.commentsToAuthor,
     commentsToEditor: a.review?.commentsToEditor,
+    // The reviewer reads back their own completed form in full.
+    review: a.review ? toFullReview(a.review) : null,
   };
 }
 
@@ -47,7 +52,9 @@ reviewerRouter.get(
   asyncHandler(async (req: AuthedRequest, res) => {
     const list = await prisma.reviewAssignment.findMany({
       where: { reviewerId: req.user!.id },
-      orderBy: { deadline: "asc" },
+      // Newest submission first — the queue is ordered by when the manuscript
+      // was submitted, not by review deadline.
+      orderBy: { manuscript: { createdAt: "desc" } },
       include: {
         manuscript: {
           select: {
@@ -56,6 +63,7 @@ reviewerRouter.get(
             abstract: true,
             keywords: true,
             status: true,
+            createdAt: true,
             author: { select: { firstName: true, lastName: true, affiliation: true } },
           },
         },
@@ -119,17 +127,13 @@ reviewerRouter.patch(
   }),
 );
 
-const reviewSchema = z.object({
-  commentsToAuthor: z.string().min(1),
-  commentsToEditor: z.string().min(1),
-  recommendation: z.nativeEnum(ReviewRecommendation),
-});
-
 reviewerRouter.post(
   "/assignments/:id/review",
   manuscriptUpload.single("file"),
   asyncHandler(async (req: AuthedRequest, res) => {
-    const body = reviewSchema.parse(req.body);
+    // The reviewer fills in the JIDA Manuscript Review Form; every section it
+    // marks as required is validated here before anything is stored.
+    const body = reviewFormSchema.parse(req.body);
     const assignment = await prisma.reviewAssignment.findFirst({
       where: { id: req.params.id, reviewerId: req.user!.id },
       include: { review: true },
@@ -149,8 +153,16 @@ reviewerRouter.post(
           assignmentId: assignment.id,
           reviewerId: req.user!.id,
           commentsToAuthor: body.commentsToAuthor,
-          commentsToEditor: body.commentsToEditor,
+          specificSuggestions: body.specificSuggestions || null,
+          commentsToEditor: body.commentsToEditor || null,
           recommendation: body.recommendation,
+          ratingTitle: body.ratingTitle,
+          ratingAbstract: body.ratingAbstract,
+          ratingLiterature: body.ratingLiterature,
+          ratingMethods: body.ratingMethods,
+          ratingConclusions: body.ratingConclusions,
+          ratingReferences: body.ratingReferences,
+          ratingStructure: body.ratingStructure,
           ...(req.file
             ? {
                 attachmentStoredName: req.file.filename,
@@ -177,13 +189,16 @@ reviewerRouter.post(
       const manuscript = await prisma.manuscript.findUniqueOrThrow({
         where: { id: assignment.manuscriptId },
       });
-      const editors = await prisma.user.findMany({ where: { role: "EDITOR" }, select: { email: true } });
+      const editors = await prisma.user.findMany({
+        where: { roles: { hasSome: storedRolesGranting(Role.EDITOR) } },
+        select: { email: true },
+      });
       await Promise.all(
         editors.map((e) => notifyEditorPendingDecision(e.email, manuscript.title)),
       );
     }
 
-    res.status(201).json(review);
+    res.status(201).json(toFullReview(review));
   }),
 );
 
@@ -213,6 +228,7 @@ reviewerRouter.get(
       recommendation: r.recommendation,
       commentsToAuthor: r.commentsToAuthor,
       commentsToEditor: r.commentsToEditor,
+      review: toFullReview(r),
     }));
     res.json(flattened);
   }),

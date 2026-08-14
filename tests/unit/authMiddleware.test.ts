@@ -1,6 +1,8 @@
 import type { Response } from "express";
 import { describe, expect, it, vi } from "vitest";
+import jwt from "jsonwebtoken";
 import { Role } from "@prisma/client";
+import { env } from "../../src/config/env.js";
 import {
   authMiddleware,
   requireRole,
@@ -40,7 +42,12 @@ describe("authMiddleware", () => {
     const next = vi.fn();
     authMiddleware(req, mockRes(), next);
     expect(next).toHaveBeenCalledOnce();
-    expect(req.user).toEqual({ id: "user-42", role: Role.EDITOR, emailVerified: true });
+    expect(req.user).toEqual({
+      id: "user-42",
+      role: Role.EDITOR,
+      roles: [Role.EDITOR],
+      emailVerified: true,
+    });
   });
 
   it("carries the email-verified claim through from the token", () => {
@@ -48,6 +55,28 @@ describe("authMiddleware", () => {
     const req = { headers: { authorization: `Bearer ${token}` } } as AuthedRequest;
     authMiddleware(req, mockRes(), vi.fn());
     expect(req.user?.emailVerified).toBe(false);
+  });
+
+  it("carries every role from a multi-role token", () => {
+    const token = signAccessToken("user-44", Role.AUTHOR, true, [Role.AUTHOR, Role.REVIEWER]);
+    const req = { headers: { authorization: `Bearer ${token}` } } as AuthedRequest;
+    authMiddleware(req, mockRes(), vi.fn());
+    expect(req.user?.roles).toEqual([Role.AUTHOR, Role.REVIEWER]);
+  });
+
+  it("reads a token minted before multi-role support as a single-role account", () => {
+    // Tokens issued by the previous release carry `role` but no `roles` claim.
+    // Sessions in flight across the deploy must not be logged out.
+    const legacy = jwt.sign(
+      { sub: "user-45", role: Role.REVIEWER, typ: "access", ev: true },
+      env.JWT_SECRET,
+      { algorithm: "HS256", expiresIn: "5m" },
+    );
+    const req = { headers: { authorization: `Bearer ${legacy}` } } as AuthedRequest;
+    const next = vi.fn();
+    authMiddleware(req, mockRes(), next);
+    expect(next).toHaveBeenCalledOnce();
+    expect(req.user?.roles).toEqual([Role.REVIEWER]);
   });
 });
 
@@ -64,7 +93,7 @@ describe("requireVerifiedEmail", () => {
     const res = mockRes();
     const next = vi.fn();
     const req = {
-      user: { id: "u", role: Role.AUTHOR, emailVerified: false },
+      user: { id: "u", role: Role.AUTHOR, roles: [Role.AUTHOR], emailVerified: false },
     } as AuthedRequest;
     requireVerifiedEmail(req, res, next);
     expect(res.status).toHaveBeenCalledWith(403);
@@ -76,14 +105,18 @@ describe("requireVerifiedEmail", () => {
 
   it("passes a verified user through", () => {
     const next = vi.fn();
-    const req = { user: { id: "u", role: Role.AUTHOR, emailVerified: true } } as AuthedRequest;
+    const req = {
+      user: { id: "u", role: Role.AUTHOR, roles: [Role.AUTHOR], emailVerified: true },
+    } as AuthedRequest;
     requireVerifiedEmail(req, mockRes(), next);
     expect(next).toHaveBeenCalledOnce();
   });
 
   it("exempts the admin so it can never lock itself out", () => {
     const next = vi.fn();
-    const req = { user: { id: "a", role: Role.ADMIN, emailVerified: false } } as AuthedRequest;
+    const req = {
+      user: { id: "a", role: Role.ADMIN, roles: [Role.ADMIN], emailVerified: false },
+    } as AuthedRequest;
     requireVerifiedEmail(req, mockRes(), next);
     expect(next).toHaveBeenCalledOnce();
   });
@@ -101,7 +134,7 @@ describe("requireRole", () => {
   it("returns 403 for a disallowed role", () => {
     const res = mockRes();
     const next = vi.fn();
-    const req = { user: { id: "u", role: Role.AUTHOR } } as AuthedRequest;
+    const req = { user: { id: "u", role: Role.AUTHOR, roles: [Role.AUTHOR] } } as AuthedRequest;
     requireRole(Role.ADMIN, Role.EDITOR)(req, res, next);
     expect(res.status).toHaveBeenCalledWith(403);
     expect(next).not.toHaveBeenCalled();
@@ -109,8 +142,49 @@ describe("requireRole", () => {
 
   it("passes through an allowed role", () => {
     const next = vi.fn();
-    const req = { user: { id: "u", role: Role.EDITOR } } as AuthedRequest;
+    const req = { user: { id: "u", role: Role.EDITOR, roles: [Role.EDITOR] } } as AuthedRequest;
     requireRole(Role.ADMIN, Role.EDITOR)(req, mockRes(), next);
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it("admits a secondary role, not just the primary one", () => {
+    // An author who also reviews reaches the reviewer routes.
+    const next = vi.fn();
+    const req = {
+      user: { id: "u", role: Role.AUTHOR, roles: [Role.AUTHOR, Role.REVIEWER] },
+    } as AuthedRequest;
+    requireRole(Role.REVIEWER)(req, mockRes(), next);
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it("lets a chief editor through the editor, reviewer and author guards", () => {
+    for (const required of [Role.EDITOR, Role.REVIEWER, Role.AUTHOR]) {
+      const next = vi.fn();
+      const req = {
+        user: { id: "c", role: Role.CHIEF_EDITOR, roles: [Role.CHIEF_EDITOR] },
+      } as AuthedRequest;
+      requireRole(required)(req, mockRes(), next);
+      expect(next, `chief editor should satisfy ${required}`).toHaveBeenCalledOnce();
+    }
+  });
+
+  it("does not give an associate editor the chief editor's reviewer rights", () => {
+    const res = mockRes();
+    const next = vi.fn();
+    const req = {
+      user: { id: "a", role: Role.ASSOCIATE_EDITOR, roles: [Role.ASSOCIATE_EDITOR] },
+    } as AuthedRequest;
+    requireRole(Role.REVIEWER)(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("admits an associate editor to the editor portal", () => {
+    const next = vi.fn();
+    const req = {
+      user: { id: "a", role: Role.ASSOCIATE_EDITOR, roles: [Role.ASSOCIATE_EDITOR] },
+    } as AuthedRequest;
+    requireRole(Role.EDITOR)(req, mockRes(), next);
     expect(next).toHaveBeenCalledOnce();
   });
 });

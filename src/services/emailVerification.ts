@@ -110,7 +110,11 @@ export async function issueVerificationEmail(
 }
 
 export type ConsumeResult =
-  | { ok: true; alreadyVerified: boolean; user: { id: string; email: string; role: Role } }
+  | {
+      ok: true;
+      alreadyVerified: boolean;
+      user: { id: string; email: string; role: Role; roles: Role[] };
+    }
   | { ok: false; reason: "invalid" | "expired" };
 
 /** Validates a raw token and flips the account to verified. Single-use. */
@@ -118,7 +122,19 @@ export async function consumeVerificationToken(rawToken: string): Promise<Consum
   const tokenHash = hashToken(rawToken);
   const record = await prisma.emailVerificationToken.findUnique({
     where: { tokenHash },
-    include: { user: { select: { id: true, email: true, role: true, emailVerified: true, firstName: true, lastName: true } } },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          roles: true,
+          emailVerified: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
   });
 
   if (!record) return { ok: false, reason: "invalid" };

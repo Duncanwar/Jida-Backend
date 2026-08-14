@@ -31,6 +31,7 @@ async function main(): Promise<void> {
       email,
       passwordHash,
       role: Role.ADMIN,
+      roles: [Role.ADMIN],
       firstName: "System",
       lastName: "Admin",
       emailVerified: true,
@@ -39,6 +40,7 @@ async function main(): Promise<void> {
     update: {
       passwordHash,
       role: Role.ADMIN,
+      roles: [Role.ADMIN],
       emailVerified: true,
       emailVerifiedAt: new Date(),
     },

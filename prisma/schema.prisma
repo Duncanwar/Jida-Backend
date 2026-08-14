@@ -12,6 +12,21 @@ enum Role {
   REVIEWER
   EDITOR
   ADMIN
+  /// Senior editor. Implicitly holds EDITOR, REVIEWER and AUTHOR rights —
+  /// see `expandRoles()` in src/utils/roles.ts.
+  CHIEF_EDITOR
+  /// Editor without the chief editor's implicit reviewer/author rights.
+  ASSOCIATE_EDITOR
+}
+
+/// Five-point scale used by every item in the manuscript review form's
+/// "Assessment of the article" section.
+enum ReviewRating {
+  EXCELLENT
+  GOOD
+  MODERATE
+  POOR
+  BAD
 }
 
 enum ManuscriptStatus {
@@ -61,7 +76,13 @@ model User {
   email        String    @unique
   /// Null for accounts created purely through Google sign-in.
   passwordHash String?
+  /// The account's primary role: decides which portal the user lands on after
+  /// signing in, and is always a member of `roles`.
   role         Role
+  /// Every role the account holds. An account may be, say, both an AUTHOR and a
+  /// REVIEWER. Authorization reads this list (expanded via `expandRoles()`),
+  /// never `role` alone. Backfilled from `role` for pre-existing accounts.
+  roles        Role[]
   firstName    String?
   lastName     String?
   affiliation  String?
@@ -84,6 +105,7 @@ model User {
   assignmentsMade    ReviewAssignment[]      @relation("EditorAssignments")
   reviews            Review[]
   editorialDecisions EditorialDecision[]
+  reviewerFeedback   ReviewerFeedback[]
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
 
@@ -133,18 +155,39 @@ model Manuscript {
   title       String
   abstract    String
   keywords    String[]
-  references  String           @db.Text
+  /// Optional — authors may submit without pasting a reference list.
+  references  String?          @db.Text
   status      ManuscriptStatus @default(SUBMITTED)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
   files        ManuscriptFile[]
+  coAuthors    CoAuthor[]
   assignments  ReviewAssignment[]
   decisions    EditorialDecision[]
   publication  Publication?
 
   @@index([authorId])
   @@index([status])
+}
+
+/// A co-author listed on a submission. These are not JIDA accounts — they are
+/// contact details captured on the submission form, so a co-author can be
+/// recorded without having registered.
+model CoAuthor {
+  id             String     @id @default(uuid())
+  manuscriptId   String
+  manuscript     Manuscript @relation(fields: [manuscriptId], references: [id], onDelete: Cascade)
+  fullName       String
+  email          String
+  affiliation    String?
+  /// Whether this co-author also fields correspondence about the manuscript.
+  isCorresponding Boolean   @default(false)
+  /// Author order as entered on the submission form.
+  position       Int        @default(0)
+  createdAt      DateTime   @default(now())
+
+  @@index([manuscriptId])
 }
 
 model ManuscriptFile {
@@ -190,8 +233,31 @@ model Review {
   assignment         ReviewAssignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   reviewerId         String
   reviewer           User                 @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  // ── "Comments and Suggestions to the Author(s)" — the only section of the
+  //    review form the author is ever shown. ──────────────────────────────
+  /// "Please provide an overall evaluation of the manuscript briefly (100-200
+  /// words)". For manuscripts that cannot be published, the inadequacies.
   commentsToAuthor   String               @db.Text
-  commentsToEditor   String               @db.Text
+  /// "Please provide reasons for acceptance or rejection as well as any
+  /// suggestions ... for revisions or improvements."
+  specificSuggestions String?             @db.Text
+
+  /// "Confidential Comments (if any)" — explicitly never shown to authors.
+  /// Optional because the form marks the section "if any"; older rows that
+  /// predate the form carry the reviewer's editor-only notes here.
+  commentsToEditor   String?              @db.Text
+
+  // ── "Assessment of the article" — seven rated items. Nullable so reviews
+  //    submitted before the form existed still read back cleanly. ─────────
+  ratingTitle        ReviewRating?
+  ratingAbstract     ReviewRating?
+  ratingLiterature   ReviewRating?
+  ratingMethods      ReviewRating?
+  ratingConclusions  ReviewRating?
+  ratingReferences   ReviewRating?
+  ratingStructure    ReviewRating?
+
+  /// "Overall Recommendation" — the form's four levels map onto this enum.
   recommendation     ReviewRecommendation
   /// Optional annotated/marked-up file the reviewer attaches alongside their comments.
   attachmentStoredName   String?
@@ -200,7 +266,28 @@ model Review {
   attachmentSizeBytes    Int?
   createdAt          DateTime             @default(now())
 
+  authorFeedback     ReviewerFeedback?
+
   @@index([reviewerId])
+}
+
+/// "Authors' Feedback of Reviewer's Work to JIDA" — the author's rating of how
+/// useful a reviewer's review was. Written by the author, read by editors; the
+/// reviewer never sees it.
+model ReviewerFeedback {
+  id        String   @id @default(uuid())
+  reviewId  String   @unique
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  /// "Rating Result [Poor] 1-5 [Excellent]".
+  rating    Int
+  /// "Specific evaluation to the Reviewer's review result".
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
 }
 
 model EditorialDecision {

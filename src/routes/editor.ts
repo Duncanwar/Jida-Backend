@@ -19,9 +19,14 @@ import {
 } from "../services/notifications.js";
 import { slugify } from "../utils/slug.js";
 import { manuscriptUpload } from "../utils/upload.js";
+import { storedRolesGranting } from "../utils/roles.js";
+import { toFullReview } from "../utils/reviewForm.js";
+import { checkScholarReadiness, type ScholarSubject } from "../services/scholar.js";
 import { sendReviewerAssignmentEmail } from "./reviewer.js";
 
 export const editorRouter = Router();
+// Chief and associate editors share this portal: both imply Role.EDITOR, so the
+// single EDITOR requirement admits all three tiers.
 editorRouter.use(authMiddleware, requireVerifiedEmail, requireRole(Role.EDITOR, Role.ADMIN));
 
 /** FR-E3 — list available reviewers so editors can assign them. */
@@ -29,7 +34,7 @@ editorRouter.get(
   "/reviewers",
   asyncHandler(async (_req, res) => {
     const reviewers = await prisma.user.findMany({
-      where: { role: Role.REVIEWER },
+      where: { roles: { hasSome: storedRolesGranting(Role.REVIEWER) } },
       orderBy: { createdAt: "asc" },
       select: { id: true, email: true, firstName: true, lastName: true, affiliation: true },
     });
@@ -49,13 +54,18 @@ editorRouter.get(
       where,
       orderBy: { createdAt: "desc" },
       include: {
-        author: { select: { id: true, email: true, firstName: true, lastName: true } },
+        author: {
+          select: { id: true, email: true, firstName: true, lastName: true, affiliation: true },
+        },
         files: { where: { isLatest: true }, take: 1 },
+        coAuthors: { orderBy: { position: "asc" } },
         assignments: {
           orderBy: { createdAt: "asc" },
           include: {
             reviewer: { select: { id: true, email: true, firstName: true, lastName: true } },
-            review: true,
+            review: {
+              include: { authorFeedback: { select: { rating: true, comment: true } } },
+            },
           },
         },
         decisions: {
@@ -71,7 +81,21 @@ editorRouter.get(
       id: m.id,
       title: m.title,
       status: m.status,
+      submittedAt: m.createdAt,
       authorName: [m.author.firstName, m.author.lastName].filter(Boolean).join(" ") || m.author.email,
+      // Full contact details for the editor's author hover card.
+      author: {
+        id: m.author.id,
+        name: [m.author.firstName, m.author.lastName].filter(Boolean).join(" ") || null,
+        email: m.author.email,
+        affiliation: m.author.affiliation,
+      },
+      coAuthors: m.coAuthors.map((c) => ({
+        fullName: c.fullName,
+        email: c.email,
+        affiliation: c.affiliation,
+        isCorresponding: c.isCorresponding,
+      })),
       decisions: m.decisions.map((d) => ({
         decision: d.decision,
         notes: d.notes,
@@ -90,6 +114,12 @@ editorRouter.get(
         reviewId: a.review?.id,
         reviewedAt: a.review?.createdAt,
         hasAttachment: Boolean(a.review?.attachmentStoredName),
+        // The editor sees the completed review form in full — ratings,
+        // recommendation, author-facing comments and confidential notes.
+        review: a.review ? toFullReview(a.review) : null,
+        // "Authors' Feedback of Reviewer's Work to JIDA", for the editor to
+        // judge how useful this reviewer's work was.
+        authorFeedback: a.review?.authorFeedback ?? null,
         reviewer: a.reviewer
           ? {
               id: a.reviewer.id,
@@ -152,7 +182,10 @@ editorRouter.post(
 
     const reviewerIds = [...new Set(body.assignments.map((a) => a.reviewerId))];
     const reviewers = await prisma.user.findMany({
-      where: { id: { in: reviewerIds }, role: Role.REVIEWER },
+      where: {
+        id: { in: reviewerIds },
+        roles: { hasSome: storedRolesGranting(Role.REVIEWER) },
+      },
     });
     if (reviewers.length !== reviewerIds.length) {
       res.status(400).json({ error: "One or more invalid reviewer ids" });
@@ -341,15 +374,84 @@ editorRouter.post(
 
 const scholarSchema = z.object({ scholarReady: z.boolean() });
 
+/** Loads everything the Scholar checks need for one publication. */
+async function loadScholarSubject(publicationId: string) {
+  const pub = await prisma.publication.findUnique({
+    where: { id: publicationId },
+    include: {
+      issue: true,
+      manuscript: {
+        include: {
+          author: { select: { firstName: true, lastName: true, affiliation: true } },
+          coAuthors: { orderBy: { position: "asc" } },
+          files: { where: { isLatest: true }, take: 1 },
+        },
+      },
+    },
+  });
+  if (!pub) return null;
+
+  const file = pub.manuscript.files[0];
+  return {
+    publication: pub,
+    subject: {
+      title: pub.manuscript.title,
+      abstract: pub.manuscript.abstract,
+      keywords: pub.manuscript.keywords,
+      references: pub.manuscript.references,
+      author: pub.manuscript.author,
+      coAuthors: pub.manuscript.coAuthors.map((c) => ({
+        fullName: c.fullName,
+        affiliation: c.affiliation,
+      })),
+      issue: pub.issue,
+      file: file ? { originalName: file.originalName, mimeType: file.mimeType } : null,
+    } satisfies ScholarSubject,
+  };
+}
+
+/** Dry run — lets the editor see what stands between an article and Scholar. */
+editorRouter.get(
+  "/publications/:id/scholar-check",
+  asyncHandler(async (req, res) => {
+    const loaded = await loadScholarSubject(req.params.id);
+    if (!loaded) {
+      res.status(404).json({ error: "Publication not found" });
+      return;
+    }
+    res.json(checkScholarReadiness(loaded.subject));
+  }),
+);
+
 editorRouter.patch(
   "/publications/:id/scholar",
   asyncHandler(async (req, res) => {
     const body = scholarSchema.parse(req.body);
+    const loaded = await loadScholarSubject(req.params.id);
+    if (!loaded) {
+      res.status(404).json({ error: "Publication not found" });
+      return;
+    }
+
+    // Turning the flag ON is what makes the page emit citation_* tags. Refuse
+    // when the article cannot actually be indexed: a flag set over a DOCX or a
+    // missing abstract produces metadata Scholar will reject, and nobody would
+    // find out until the article failed to appear.
+    const readiness = checkScholarReadiness(loaded.subject);
+    if (body.scholarReady && !readiness.ready) {
+      res.status(400).json({
+        error: "This article does not yet meet Google Scholar's requirements.",
+        code: "SCHOLAR_NOT_READY",
+        ...readiness,
+      });
+      return;
+    }
+
     const pub = await prisma.publication.update({
       where: { id: req.params.id },
       data: { scholarReady: body.scholarReady },
     });
-    res.json(pub);
+    res.json({ ...pub, ...readiness });
   }),
 );
 

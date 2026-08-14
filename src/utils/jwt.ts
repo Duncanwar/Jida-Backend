@@ -3,7 +3,14 @@ import { env } from "../config/env.js";
 
 export type AccessTokenPayload = {
   sub: string;
+  /** The primary role — decides the landing portal. Always a member of `roles`. */
   role: string;
+  /**
+   * Every role the account holds. Optional for backward compatibility: tokens
+   * minted before multi-role support carry only `role`, and are read as the
+   * single-role list `[role]` (see authMiddleware).
+   */
+  roles?: string[];
   typ: "access";
   /**
    * FR-AUTH-1 — email-verified flag, carried in the token so protected routes
@@ -14,9 +21,14 @@ export type AccessTokenPayload = {
   ev?: boolean;
 };
 
-export function signAccessToken(sub: string, role: string, emailVerified = true): string {
+export function signAccessToken(
+  sub: string,
+  role: string,
+  emailVerified = true,
+  roles: string[] = [role],
+): string {
   return jwt.sign(
-    { sub, role, typ: "access", ev: emailVerified } satisfies AccessTokenPayload,
+    { sub, role, roles, typ: "access", ev: emailVerified } satisfies AccessTokenPayload,
     env.JWT_SECRET,
     {
       expiresIn: `${env.JWT_ACCESS_EXPIRES_MIN}m`,

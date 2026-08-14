@@ -16,18 +16,25 @@ import {
 import { GoogleAuthError, verifyGoogleIdToken } from "../services/googleAuth.js";
 import { authRateLimiter, verificationRateLimiter } from "../middleware/rateLimit.js";
 import { AuthProvider, Role, type User } from "@prisma/client";
+import { expandRoles, normalizeRoles } from "../utils/roles.js";
 import { env, googleAuthEnabled } from "../config/env.js";
 
 export const authRouter = Router();
 
 /** Shape returned to the client for an authenticated user. */
 function publicUser(
-  user: Pick<User, "id" | "email" | "role" | "firstName" | "lastName" | "emailVerified" | "avatarUrl">,
+  user: Pick<
+    User,
+    "id" | "email" | "role" | "firstName" | "lastName" | "emailVerified" | "avatarUrl"
+  > & { roles?: Role[] },
 ) {
   return {
     id: user.id,
     email: user.email,
     role: user.role,
+    // Expanded so the client can render a switcher for every portal the
+    // account can actually reach, not just the roles literally stored.
+    roles: expandRoles(normalizeRoles(user.role, user.roles)),
     firstName: user.firstName,
     lastName: user.lastName,
     emailVerified: user.emailVerified,
@@ -48,8 +55,11 @@ const registerSchema = z
   .object({
     email: z.string().email().transform((v) => v.toLowerCase().trim()),
     password: z.string().min(8, "Password must be at least 8 characters"),
-    // RM-03 — admins cannot self-register; they are provisioned via the seed script.
+    // RM-03 — admins cannot self-register; they are provisioned via the seed
+    // script. Editor tiers are assigned by an admin, not chosen at signup.
     role: z.enum([Role.AUTHOR, Role.REVIEWER, Role.EDITOR]),
+    /** Additional roles requested at signup, e.g. an author who also reviews. */
+    roles: z.array(z.enum([Role.AUTHOR, Role.REVIEWER, Role.EDITOR])).optional(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     // The frontend sends a single `name` field; accept both spellings.
@@ -95,6 +105,7 @@ authRouter.post(
         email: body.email,
         passwordHash,
         role: body.role,
+        roles: normalizeRoles(body.role, body.roles),
         firstName: body.firstName,
         lastName: body.lastName,
         affiliation: body.affiliation,
@@ -162,7 +173,8 @@ authRouter.post(
 
     // Requirement 1 — the verification gate. The admin is exempt: it is seeded
     // pre-verified and must never be able to lock itself out of the system.
-    if (!user.emailVerified && user.role !== Role.ADMIN) {
+    const heldRoles = normalizeRoles(user.role, user.roles);
+    if (!user.emailVerified && !heldRoles.includes(Role.ADMIN)) {
       res.status(403).json({
         error: "Please verify your email address before signing in. Check your inbox for the link.",
         code: "EMAIL_NOT_VERIFIED",
@@ -171,7 +183,7 @@ authRouter.post(
       return;
     }
 
-    const token = signAccessToken(user.id, user.role, user.emailVerified);
+    const token = signAccessToken(user.id, user.role, user.emailVerified, expandRoles(heldRoles));
     res.json({
       user: publicUser(user),
       accessToken: token,
@@ -201,7 +213,8 @@ async function handleVerify(rawToken: string, res: Response): Promise<void> {
 
   // Verification proves control of the mailbox, so it is safe to sign the user
   // straight in — it removes a pointless second credential prompt.
-  const accessToken = signAccessToken(result.user.id, result.user.role, true);
+  const verifiedRoles = expandRoles(normalizeRoles(result.user.role, result.user.roles));
+  const accessToken = signAccessToken(result.user.id, result.user.role, true, verifiedRoles);
   res.json({
     message: result.alreadyVerified
       ? "This email address is already verified."
@@ -211,6 +224,7 @@ async function handleVerify(rawToken: string, res: Response): Promise<void> {
       id: result.user.id,
       email: result.user.email,
       role: result.user.role,
+      roles: verifiedRoles,
       emailVerified: true,
     },
     accessToken,
@@ -376,6 +390,7 @@ authRouter.post(
             email: identity.email,
             passwordHash: null,
             role: body.role ?? Role.AUTHOR,
+            roles: normalizeRoles(body.role ?? Role.AUTHOR),
             firstName: identity.firstName,
             lastName: identity.lastName,
             affiliation: body.affiliation ?? body.institution,
@@ -391,7 +406,12 @@ authRouter.post(
       }
     }
 
-    const accessToken = signAccessToken(user.id, user.role, true);
+    const accessToken = signAccessToken(
+      user.id,
+      user.role,
+      true,
+      expandRoles(normalizeRoles(user.role, user.roles)),
+    );
     res.status(created ? 201 : 200).json({
       user: publicUser(user),
       accessToken,

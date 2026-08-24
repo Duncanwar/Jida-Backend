@@ -10,6 +10,7 @@ import { editorRouter } from "./routes/editor.js";
 import { publicRouter } from "./routes/public.js";
 import { settingsRouter } from "./routes/settings.js";
 import { adminRouter } from "./routes/admin.js";
+import { notificationsRouter } from "./routes/notifications.js";
 
 export function createApp(): express.Application {
   const app = express();
@@ -42,6 +43,7 @@ export function createApp(): express.Application {
   app.use("/api/editor", editorRouter);
   app.use("/api/public", publicRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/notifications", notificationsRouter);
 
   app.use(errorHandler);
   return app;

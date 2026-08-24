@@ -108,6 +108,7 @@ model User {
   reviewerFeedback   ReviewerFeedback[]
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  notifications      Notification[]
 
   @@index([emailVerified])
 }
@@ -166,6 +167,7 @@ model Manuscript {
   assignments  ReviewAssignment[]
   decisions    EditorialDecision[]
   publication  Publication?
+  notifications Notification[]
 
   @@index([authorId])
   @@index([status])
@@ -327,4 +329,22 @@ model Publication {
   publishedAt   DateTime   @default(now())
 
   @@index([issueId])
+}
+
+/// A user-set reminder tied to a manuscript. In-app only — no email is sent.
+/// A reminder becomes visible purely by the clock passing `visibleAt`, so no
+/// background job is needed: the list endpoint just filters on it.
+model Notification {
+  id           String      @id @default(uuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manuscriptId String?
+  manuscript   Manuscript? @relation(fields: [manuscriptId], references: [id], onDelete: Cascade)
+  title        String
+  body         String
+  visibleAt    DateTime
+  readAt       DateTime?
+  createdAt    DateTime    @default(now())
+
+  @@index([userId, visibleAt])
 }

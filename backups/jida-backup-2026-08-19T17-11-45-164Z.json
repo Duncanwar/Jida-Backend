@@ -1,0 +1,528 @@
+{
+  "createdAt": "2026-08-19T17:11:45.165Z",
+  "users": [
+    {
+      "id": "9e731400-1081-452d-9323-475b8fccc4d3",
+      "email": "semuhungu.author@author.com",
+      "role": "AUTHOR",
+      "firstName": "Semuhungu",
+      "lastName": "Jackson",
+      "affiliation": "Adventist University of Central Africa",
+      "createdAt": "2026-08-07T14:45:20.696Z"
+    },
+    {
+      "id": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "email": "iraguhadarren2@gmail.com",
+      "role": "REVIEWER",
+      "firstName": "Serukundo",
+      "lastName": "Samson",
+      "affiliation": "Adventist University of Central Africa",
+      "createdAt": "2026-08-06T23:00:55.389Z"
+    },
+    {
+      "id": "3c148044-b610-45d4-9992-60bc45913171",
+      "email": "darreniraguha51@gmail.com",
+      "role": "AUTHOR",
+      "firstName": "Iraguha",
+      "lastName": "Darren",
+      "affiliation": "Adventist University of Central Africa",
+      "createdAt": "2026-08-06T22:32:31.050Z"
+    },
+    {
+      "id": "f94b7efc-b956-4d86-bb4a-426654026065",
+      "email": "admin@auca.ac.rw",
+      "role": "ADMIN",
+      "firstName": "ada",
+      "lastName": "lovebird admin",
+      "affiliation": "Adventist University of Central Africa",
+      "createdAt": "2026-08-17T13:04:25.980Z"
+    },
+    {
+      "id": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "email": "iraguhadarren7@gmail.com",
+      "role": "EDITOR",
+      "firstName": "Mucyo",
+      "lastName": "Jean",
+      "affiliation": "Adventist University of Central Africa",
+      "createdAt": "2026-08-06T22:48:36.711Z"
+    }
+  ],
+  "manuscripts": [
+    {
+      "id": "0abb41b8-05a3-4066-91b6-f8080691ae47",
+      "authorId": "3c148044-b610-45d4-9992-60bc45913171",
+      "title": "Effect of Financial Planning on Quality Service Delivery in  Telecommunication Companies in Rwanda",
+      "abstract": "This study investigated the contribution of financial planning on quality service delivery in \r\ntelecommunication companies in Rwanda. The target population of this study is 103 respondents \r\nparticipated in this study. Structured, validated and reliable questionnaire was used. Based on \r\nthe findings, results of the multiple regression showed that the adjusted R2\r\nis 0.730 representing \r\n73.0% indicating that the financial planning components contribute to the quality service delivery. \r\nFrom ANOVA Table, the F-test is 70.093 has a p-value = 0.000. This implies that all financial \r\nplanning components variables jointly have positive and significant effect on quality service \r\ndelivery. Therefore, our null hypothesis which stated that there is no significant effect of financial \r\nplanning components on quality service delivery in selected telecommunication companies in \r\nRwanda is not accepted at all levels of significance. The study concluded that financial planning \r\ncontributes positively to quality service delivery in telecommunication companies in Rwanda. It \r\nwas recommended that during budgetary allocations, each department should be given a chance \r\nto participate in financial planning.",
+      "keywords": [
+        "finance",
+        "planning",
+        "quality",
+        "services",
+        "delivery",
+        "telecommunication"
+      ],
+      "references": "Bernard, H. R. (1995). Research Methods in Anthropology (2nd ed.). London, England: Sage \r\nPublications.\r\nCedefop website (Accessed 23/07/2020). EU countries respond to the effect of coronavirus on \r\ntheir education systems.\r\nClark, T. (2018). Key Challenges and Pedagogical Implications: International Teacher \r\nPerspectives. Cambridge Assessment English internal report.\r\nCreswell, J. W. (2014). Educational research: Planning, conducting, and evaluating quantitative \r\nand qualitative research (14th ed.). Boston, MA: Person.\r\nCohen, L., Manion, L., & Morrison, K. (2011). Research methods in education. (7th ed,). London, \r\nEngland: Routledge.\r\nCorbin, J., & Strauss, A. (2008). Basics of qualitative research. Los Angels, CA: Sage.\r\n66\r\nDenscombe, M. (2010). The good research guide (4th ed.). Berkshire, England: Open University \r\nPress.\r\nFlick, U. (2002). An introduction to qualitative research. London, England: Sage Publications.\r\nFrey, B. K & Osborne, M. A. (2013). The future employment: how susceptible are jobs to \r\ncomputerisation?\r\nGouedard, P., Pont, B and Viennet, R. (2020). Education responses to COVID-19: shaping an \r\nimplementation strategy,” OECD Education Working Papers, \r\nNo.244,https://doi.org/10.1787/8e95f977-en.\r\nGrainger, Karen, Mills & Sara (2016). Directness and Indirectness Across Cultures. Palgrave \r\nMacmillan UK. do:1057/9781137340399_4-via Springer link.\r\nGray, D. E. (2014). Doing research in the real world (3rd ed.). Los Angeles, CA: Sage\r\nHarrison, G. (2020). English teaching and learning during the COVID crisis: Online classes and \r\nupskilling teachers. File:///c:/Users/User/Desktop/COVID%20ARTICLE/ \r\nOnline%29English%20classes%20during%20the%20the%20Covid%/20crisis.html\r\nJorgensen, M & Phillips, L. J.(2002). Discourse Analysis as Theory and Method. SAGE. \r\nPublications. London. Thousand Oaks. New Delhi\r\nKadodo, W and Muzira, A. (2019). “The Influence of Language Users’ Attitudes towards the \r\nLearning and Teaching of English Language in three Post-Independence Namibian Schools”. \r\nJournal for studies in Humanities and Social Sciences, University of Namibia. (ISNN2026-7215) \r\nVolume 8. Windhoek, Namibia\r\nMuchemwa, S. (2021). University Education, Face-to-Screen Learning, Zimbabwe, Kampala JIIR \r\nConference, e-learning, online learning, online-gadgets, data bundles, power-cuts.\r\nMaree, K. (ED.) (2010). First steps in research. Pretoria. Van Schaik Publishers.\r\nOECD, (2020). Education and COVID-19: Focusing on the long-term impact of school closures.\r\nRwezuva, S. Mutsiwegota, S. Michels, G. Feki, M and Eun, E. (2021). Providing a learning \r\nsolution for millions of in and out of school children in Zimbabwe: The COVID-19 pandemic has \r\naffected the learning of millions of children around the world including 4,6 million children in \r\nZimbabwe.\r\nWikipediaen.wikipedia.org/wiki/Zimbabwean-English (Accessed 10/07/2021).\r\nWilson, M., & Sapsford, R. (2006). Asking questions. In R. Sapsford & V. Jupp (Eds.). Data \r\ncollection and analysis. Los Angeles, CA: Sage.",
+      "status": "UNDER_REVIEW",
+      "createdAt": "2026-08-12T23:34:04.704Z",
+      "updatedAt": "2026-08-12T23:37:20.881Z"
+    },
+    {
+      "id": "c1a8afc2-3146-486c-aa92-de3dfe984e5b",
+      "authorId": "3c148044-b610-45d4-9992-60bc45913171",
+      "title": "Contribution of Nurturing Learning Environment to Achieving Teaching  Objectives in Rwanda: Evidence from Selected Secondary Schools in Gasabo  District",
+      "abstract": "This study investigated the contribution of nurturing a learning environment to achieving teaching \r\nobjectives in Rwanda. Through the descriptive research design, the researcher collected and \r\nanalysed data from respondents. Regression research design was used because the researcher \r\nmeasured the relationship between the variables of the study. For this particular study, the \r\npopulation is 78 teachers of 6 selected public secondary schools in the Gasabo district. Those are \r\n14 teachers from GS Remera Catholic, 12 teachers from GS Kimironko I, 13 teachers from GS \r\nMusave, 11 teachers from GS Rugando, 13 teachers from GS Gisozi and 15 teachers from GS \r\nKabuga. These schools were selected because they are Gasabo district public schools, which are \r\nfully funded by the government. To measure the relationship between Nurturing learning \r\nenvironment and achieving teaching objectives, regression analysis was used and the results \r\nindicated that the adjusted coefficient of determination was 0.948. This implies that the predictors \r\nof a nurturing learning environment affect the achievement of teaching objectives in secondary \r\nschools of the Gasabo district in Rwanda by 94.8%. In the end, schools in the Gasabo district are \r\nrecommended to come up with strategies to increase students’ graduation rates since a large \r\nnumber of respondents disagreed that all of the enrolled students successfully finished their \r\nstudies.",
+      "keywords": [
+        "nurturing",
+        "learning",
+        "environment",
+        "teaching"
+      ],
+      "references": "Usman, Y.D. (2016). Educational Resources: An Integral Component for Effective School \r\nAdministration in Nigeria. Online Submission, 6(13), 27-37.",
+      "status": "ACCEPTED",
+      "createdAt": "2026-08-12T23:17:21.165Z",
+      "updatedAt": "2026-08-12T23:41:54.572Z"
+    },
+    {
+      "id": "cad9ac5f-c200-4df7-825c-9a8f0dff8897",
+      "authorId": "3c148044-b610-45d4-9992-60bc45913171",
+      "title": "Contribution of Employee Motivation to Task Accomplishment in SMEs in  Rwanda: Evidence from Textile Industies (Dikam Fashion and New Kigali  Designers) in Kigali",
+      "abstract": "This study investigated the impact of employee motivation on task accomplishment in SMEs in \r\nRwanda. A descriptive research approach was used, and questionnaires were distributed to 153 \r\nrespondents from DIKAM and New Kigali Designer. Regression analysis was adopted to \r\nstatistically analyze the contribution of employee motivation on task accomplishment. The results \r\nindicated that the adjusted R2\r\nis 0.231 representing 23.1%, indicating that the employee motivation \r\ncomponents included in the model explains a relatively small portion of the variation in task \r\naccomplishment, while 0.769 representing 76.9% of task accomplishment is likely due to other \r\nfactors that are not included in the model. According to the ANOVA Table, the F- test of 10.114 is\r\nstatistically significant with p < 0.05 indicated that the variables used in the model have a\r\ngoodness of fit and that are good predictors of task accomplishment. Therefore, H0 which states\r\nthat there is no significant effect of employee motivation components on task accomplishment is\r\nrejected at all levels of significance. The study recommends prioritizing fair and competitive \r\npayment, fostering a positive working environments, and providing training to motivate \r\nemployees. This can help address the operational challenges SMEs face, resulting in low \r\nperformance and high failure rates.",
+      "keywords": [
+        "employee motivation",
+        "small and medium enterprises",
+        "task accomplishment"
+      ],
+      "references": "Akerlof, G. A., & Kranton, R. E. (2015). Identity and the Economics of Organizations. Journal of \r\nEconomic perspectives, , 19(1), 9-32.\r\nAkimpaye, L. (2016). The impact of employee motivation dimensions . Kigali.\r\nAl Aina, R., & Atan, T. (2020). The impact of implementing talent management practices on \r\nsustainable organizational performance. Sustainability journal, 12(20), 8372.\r\nAsamoah, E. A. (2015). strong relationship of motivation strategies and affective commitment. \r\njournal of economics.\r\nGeomani, T. (2012). Impact of Motivation on Employee Job Performance. p. 46.\r\nGreen, T. (2010). Motivation Management: fuelling performance by discovering what \r\npeoplebelieve about themselves and their organisations. Palo Alto: Davies-Black \r\nPublishing.\r\nGupta, W. (2015). Theory and Practices of Management. New Delhi: Sultan Chand & Sons \r\nPublishers.\r\nKavila, F. (2017). The effect of task control measures on performance in Kenya. International \r\nAcademic Journal of Economics and Finance, 2(3), 255-267.`\r\nLeonard, D. (2014). Implementation as mutual adaptation of technology and organization. Manag \r\nKnowl Assets, Creat Innovs, 17(4), 429-431.\r\nMIFOTRA. (2017). Rwandan Labour Force Challenges. Kigali, Rwanda.\r\nMulisa, K. (2018). Employee productivity in the organization. Journal of economics, 4(2) 11-12.\r\nPSF. (2020). Performance of private sector in Rwanda. Kigali.\r\nRDB. (2019). Survey on the private sector in Rwanda. Kigali.\r\nRothberg, F. (2012). The Role of Controls in Risk Assesment. Journal of economics, 2 (21) 30-\r\n32. Retrieved April 21, 2019, from https://www.cfoedge.com/blog/controls/the-role-of\u0002internal-controls-in-fraud-prevention/\r\nRura. (2020). Comprehensive Report on Private Companies Performance. Kigali.\r\nSaxenian, A. (2019). The new argonauts: regional advantage in a global economy. Massachusetts: \r\nHarvard University Press.\r\nWEF. (2018). Doing business report. Davos.",
+      "status": "ACCEPTED",
+      "createdAt": "2026-08-13T08:53:45.486Z",
+      "updatedAt": "2026-08-13T09:49:38.556Z"
+    },
+    {
+      "id": "7fb3399f-fa13-407a-a503-0a58f2bf8c78",
+      "authorId": "3c148044-b610-45d4-9992-60bc45913171",
+      "title": "Effects of Teamwork on Teachers’ Performance in Selected Schools: A Case  of Kinyinya Sector, Gasabo District",
+      "abstract": "People working together for a common goal and working hand in hand for its attainment are seen \r\nas teamwork. Various studies evidenced that teamwork increases employee performance. Studies \r\nwere conducted in different domains, and few were conducted in the education sectors specifically \r\nin Rwanda. Therefore, the current study aimed to assess the effects of teamwork on teachers’ \r\nperformance in selected schools in Gasabo District, Kinyinya Sector in Rwanda. The study \r\nadopted a quantitative approach cross-sectional design. It involved 140 teachers selected from the \r\nthree schools in Kinyinya Sector, Gasabo District. The sample was chosen using a proportionate \r\nstratified random sampling strategy then a simple random sample. To gather data a self\u0002administered five Likert scale questionnaire was employed. Data analysis was done using Excel \r\nand SPSS version 20.0 and data were displayed in tables. Frequencies, percentages, mean, and \r\nstandard deviation were calculated using descriptive statistics. Pearman ’Rank correlation and \r\nordinal regression were done for inferential statistics. The results from this study showed the \r\npredictors of teamwork studied which were abilities of the members of the team, team trust and \r\nteam spirit or esprit de corps to have a strong relationship with employee performance. In \r\naddition, team trust and team spirit were found to positively affect the employee performance. \r\nTeam trust showed a statistical significance while team spirit did not. Team members ‘abilities \r\nwere found to negatively affect employee performance. However, this was not significant. \r\nTherefore, the study recommended ensuring a working environment that inspires team trust among \r\nteachers.",
+      "keywords": [
+        "teamwork",
+        "performance",
+        "esprit de corps",
+        "abilities"
+      ],
+      "references": "Abdullah, R. (2017). Impact of teamwork, esprit de corp, team trust on employee performance in \r\nRoyalindo Expoduta Jakarta Indonesia. International Journal Of Advancement In \r\nEngineering Technology, Management and Applied Science (IJAETMAS), 4(3), 106–113. \r\nwww.ijaetmas.com\r\nAdil, M. S., & Hamid, K. B. A. (2020). Effect of Teamwork on Employee Performance in High￾Tech Engineering SMEs of Pakistan: A Moderating Role of Supervisor Support. South Asian \r\nJournal of Management Sciences, 14(1), 122–141. \r\nhttps://doi.org/10.21621/sajms.2020141.07\r\nAgarwal, S., & Adjirackor, T. (2016). Impact of teamwork on organizational productivity in some \r\nselected basic schools in the Accra Metropolitan assembly. European Journal of Business, \r\nEconomics and Accountancy, 4(6). www.idpublications.org\r\nAgwa, D. M. O. (2015). Teamwork and Employee Performance in The bonny Nigeria Liquefied \r\nNatural Gas Plant. Strategic Management Quarterly, 3(4), 40–60. \r\nhttps://doi.org/10.15640/smq.v3n4a3\r\nAhmad, I., & Manzoor, S. R. (2017). Effect of Teamwork, Employee Empowerment and Training \r\non Employee Performance. International Journal of Academic Research in Business and \r\nSocial Sciences, 7(11). https://doi.org/10.6007/ijarbss/v7-i11/3472\r\nAl-Jammal, H. R., Al-Khasawneh, A. L., & Hamadat, M. H. (2015). The Impact of the Delegation \r\nof Authority on Employees’ Performance at Great Irbid Municipality: Case Study. \r\nInternational Journal of Human Resource Studies, 5(3), 48. \r\nhttps://doi.org/10.5296/ijhrs.v5i3.8062\r\nAl Salman, W., & Hassan, Z. (2016). Impact of Effective Teamwork on Employee Performance. \r\nInternational Journal of Accounting & Business Management, 4(1), 76–85. \r\nhttps://doi.org/10.24924/ijabm/2016.04/v4.iss1/76.85\r\nAlvi, M. (2016). A Manual for Selecting Sampling Techniques in Research. Munich Personal \r\n34\r\nRePEC Archive, 2016, 1–56.\r\nAydıntan, B., & Abdulle, A. (2019). The Effect of Teamwork on Employee Performance in Some \r\nSelected Private Banks in Mogadishu-Somalia. Journal of Business Research - Turk, 11(3), \r\n1589–1598. https://doi.org/10.20491/isarder.2019.691\r\nChawla, C., & Jain, V. (2021). Teamwork on Employee Performance and Organization Growth. \r\nJournal of Contemporary Issues in Business and Government, 27(3), 705–709. \r\nhttps://doi.org/10.47750/cibg.2021.27.03.097\r\nFröbel, P., & Marchington, M. (2005). Teamworking structures and worker perceptions: A cross￾national study in pharmaceuticals. International Journal of Human Resource Management, \r\n16(2), 256–276. https://doi.org/10.1080/0958519042000311435\r\nHanaysha, J. (2016). Testing the Effects of Employee Empowerment, Teamwork, and Employee \r\nTraining on Employee Productivity in Higher Education Sector. International Journal of \r\nLearning and Development, 6(1), 164–178. https://doi.org/10.5296/ijld.v6i1.9200\r\nLeaver,C.,Ozier,0.,Serneels,P.,Zeitlin,A.(2017). Is A Pay-For-Performance Model For Teachers \r\nEffective In Improving Educational Outcomes? Evidence From Rwanda,Innovation for \r\nPoverty Action, https://poverty-action.org/pay-performance-model-teachers-effective￾improving-educational-outcomes-evidence-rwanda\r\nLoBiondo-Wood, G., & Haber, J. (2014). Nursing Research: Methods and Critical Appraisal for \r\nEvidence-Based Practice. Mosby.\r\nManzoor, S. R., Ullah, H., Hussain, M., & Ahmad, Z. M. (2011). Effect of Teamwork on Employee \r\nPerformance. International Journal of Learning and Development, 1(1), 110. \r\nhttps://doi.org/10.5296/ijld.v1i1.1110\r\nMinistry of Education ,( 2018) Education Sector Strategic Plan 2018/19 To 2023/24\r\nrwanda_esp_2018-19-2023-24.pdf (unesco.org)\r\nOnwuegbuzie, A., Sabates, R., & Carter, E. (2021). Teaching quality in secondary education in \r\nRwanda: Evidence from STEM teachers. In Leaders in Teaching Research and Policy Series\r\n(Issue May, pp. 1–40). https://www.educ.cam.ac.uk/centres/real/publications/Teaching \r\nquality in secondary education in Rwanda- Evidence from STEM teachers.pdf\r\nOoko, P. A. (2015). Impact of Teamwork on the Achievement of Targets in Organisations in \r\nKenya: A Case of SOS Children’s Villages, Eldoret. European Journal of Business and \r\nManagementOnline), 7(14), 2222–2839. \r\nhttp://www.iiste.org/Journals/index.php/EJBM/article/viewFile/22483/23113\r\nOsei Boakye, E. (2015). The impact of teamwork on employee performance. ResearchGate, 1–58. \r\nhttps://doi.org/10.13140/RG.2.1.4959.8804\r\nOteshova, A. K., Niyazbayeva, A. A., Prodanova, N. A., Sabirova, R. K., & Zayed, N. M. (2021). \r\nThe effect of teamwork on employee productivity. Academy of Strategic Management \r\nJournal, 20(5), 3–8.\r\nPfaff, E., & Huddleston, P. (2003). Does It Matter if I Hate Teamwork? What Impacts Student \r\nAttitudes toward Teamwork. Journal of Marketing Education, 25(1), 37–45. \r\n35\r\nhttps://doi.org/https://doi.org/10.1177/027347530225\r\nPhina, O. N., Stanley Arinze, A., Faith Chidi, O., & Daniel Chukwuma, E. (2018). The effect of \r\nteamwork on employee performance: a study of medium scale industries in anambra state \r\nonyekwelu njideka phina. International Journal of Contemporary Applied Researches, 5(2), \r\n174–194. www.ijcar.net\r\nPhuong, V. H., & Huy, H. T. (2022). Effects of Teamwork on Employee Performance: a Case \r\nStudy of the Hotel Sector in Can Tho City, Vietnam. Geojournal of Tourism and Geosites, \r\n41(2), 472–476. https://doi.org/10.30892/gtg.41218-852\r\nRahim Benrazavi, S., & Daud Silong, A. (2013). Employees’ Job Satisfaction and Its Influence on \r\nWillingness to Work in Teams. Journal of Management Policy and Practice, 14(1), 127–140.\r\nSanyal, S., & Hisam, M. W. (2018). The Impact of Teamwork on Work Performance of \r\nEmployees: A Study of Faculty Members in Dhofar University. IOSR Journal of Business \r\nand Management, 20(3), 15–22. https://doi.org/10.9790/487X-2003011522\r\nSurucu, L., & Maslakci, A. (2020). Business & Management Studies : Business & Management \r\nStudies: An International Journal, 8(3), 2694–2726.\r\nTahir, N., Yousafzai, I. K., Jan, D. S., & Hashim, M. (2014). The Impact of Training and \r\nDevelopment on Employees Performance and Productivity A case study of United Bank \r\nLimited Peshawar City, KPK, Pakistan. International Journal of Academic Research in \r\nBusiness and Social Sciences, 4(4), 86–98. https://doi.org/10.6007/ijarbss/v4-i4/756\r\nThomas, L. (2023). Stratified Sampling | Definition, Guide & Examples.\r\nWilliams, T. P. (2020). For the third time in 11 years, Rwanda changed the language used in \r\nprimary schools. In The Washington Post. \r\nhttps://www.washingtonpost.com/politics/2020/01/24/third-time-11-years-rwanda-changed\u0002language-used-primary-schools/",
+      "status": "ACCEPTED",
+      "createdAt": "2026-08-13T20:19:30.219Z",
+      "updatedAt": "2026-08-13T20:28:14.756Z"
+    },
+    {
+      "id": "5e7ba963-85b1-4858-b0e2-5152883a5cd6",
+      "authorId": "3c148044-b610-45d4-9992-60bc45913171",
+      "title": "Determinants of Students’ Academic Performance at Adventist University of  Central Africa",
+      "abstract": "The purpose of this study was to describe factors of students’ academic performance at the \r\nAdventist University of Central Africa (AUCA). To examine the effect of the students’ learning \r\nstyle preferences, language of instruction, student-teacher interaction, student’s motivation and \r\nthe student’s prior knowledge on their academic performance. The study was conducted in \r\nFebruary 2022 at Masoro Campus and Gishushu Campus. A sample size of 121 students was \r\nselected in the academic year 2021/2022 (1) using convenience sampling technique at 90% \r\nconfidence interval. From February 22 to 24, 2022 a number of 200 questionnaires were \r\ndistributed to students during the general assembly meetings and class meetings. Only 121 \r\nquestionnaires were returned for data analysis. The study used both descriptive and correlational \r\nresearch design to design the research questions formulate research objectives and analyze data\r\nusing SPSS. V22. Findings showed that learning styles (ß=0.329; 0.05<sig. =0.029) and student\u0002teacher interaction (ß=0.283; 0.05<sig. =0.006) affect academic performance at the Adventist \r\nUniversity of Central Africa, Rwanda. It was recommended to put en emphasis on teaching \r\nmaterials and adequate facilities for the sake of variety in the learning process. It was also \r\nrecommended to teachers to support students and provide effective guidance during the learning \r\nprocess by showing the relevance of the course in real world experience.",
+      "keywords": [
+        ": learning styles",
+        "student-teacher interaction",
+        "language of instruction",
+        "motivation",
+        "prior-knowledge and academic performance"
+      ],
+      "references": null,
+      "status": "ACCEPTED",
+      "createdAt": "2026-08-13T22:41:27.845Z",
+      "updatedAt": "2026-08-13T22:56:56.004Z"
+    }
+  ],
+  "files": [
+    {
+      "id": "bf737f4a-7958-42cb-b38f-b5167a9186d0",
+      "manuscriptId": "c1a8afc2-3146-486c-aa92-de3dfe984e5b",
+      "storedName": "cde009eb-34a7-4e13-b0f2-c0db5b04082a.pdf",
+      "originalName": "JIDA December 2023-40-44.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 314348,
+      "versionLabel": 1,
+      "isLatest": false,
+      "source": "AUTHOR",
+      "remarks": null,
+      "createdAt": "2026-08-12T23:17:21.165Z"
+    },
+    {
+      "id": "48e71b2a-ea0c-4e31-ba5d-7c8938915b8e",
+      "manuscriptId": "c1a8afc2-3146-486c-aa92-de3dfe984e5b",
+      "storedName": "560dbf7e-be84-4ac0-8c10-e02a0104d19a.pdf",
+      "originalName": "Contribution of Nurturing Learning Environment to Achieving Teaching  Objectives in Rwanda_ Evidence from Selected Secondary Schools in Gasabo  District.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 314348,
+      "versionLabel": 2,
+      "isLatest": false,
+      "source": "EDITOR",
+      "remarks": "revise this",
+      "createdAt": "2026-08-12T23:21:57.751Z"
+    },
+    {
+      "id": "7bcabcc9-bd3a-4c07-82d5-e710d2fe8609",
+      "manuscriptId": "c1a8afc2-3146-486c-aa92-de3dfe984e5b",
+      "storedName": "8b3a8bb1-ae06-4f04-801d-3263f323a221.pdf",
+      "originalName": "Contribution of Nurturing Learning Environment to Achieving Teaching  Objectives in Rwanda_ Evidence from Selected Secondary Schools in Gasabo  District.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 314348,
+      "versionLabel": 3,
+      "isLatest": true,
+      "source": "AUTHOR",
+      "remarks": null,
+      "createdAt": "2026-08-12T23:23:53.187Z"
+    },
+    {
+      "id": "baac5d9d-407f-49ee-acfa-f299896c108d",
+      "manuscriptId": "0abb41b8-05a3-4066-91b6-f8080691ae47",
+      "storedName": "14519514-5f02-400d-a1c9-1442de6dfbe7.pdf",
+      "originalName": "JIDA December 2023-53-70.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 369350,
+      "versionLabel": 1,
+      "isLatest": true,
+      "source": "AUTHOR",
+      "remarks": null,
+      "createdAt": "2026-08-12T23:34:04.704Z"
+    },
+    {
+      "id": "e3595bc2-4d40-4bb6-afe5-6cf349dd2e20",
+      "manuscriptId": "cad9ac5f-c200-4df7-825c-9a8f0dff8897",
+      "storedName": "52c776dc-3f9b-47e8-8577-adb8f4cb69c2.pdf",
+      "originalName": "JIDA December 2023-45-52.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 232740,
+      "versionLabel": 1,
+      "isLatest": true,
+      "source": "AUTHOR",
+      "remarks": null,
+      "createdAt": "2026-08-13T08:53:45.486Z"
+    },
+    {
+      "id": "58d28e69-f0eb-4021-b9d7-44b48866eed4",
+      "manuscriptId": "7fb3399f-fa13-407a-a503-0a58f2bf8c78",
+      "storedName": "177112b9-4797-4d03-b636-b577bde7791f.pdf",
+      "originalName": "JIDA December 2023-25-39.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 329285,
+      "versionLabel": 1,
+      "isLatest": true,
+      "source": "AUTHOR",
+      "remarks": null,
+      "createdAt": "2026-08-13T20:19:30.219Z"
+    },
+    {
+      "id": "31a5615b-9033-423c-8cf9-0046667dc84e",
+      "manuscriptId": "5e7ba963-85b1-4858-b0e2-5152883a5cd6",
+      "storedName": "f8b138a3-a224-4b0f-ba0d-df3a13e37b76.pdf",
+      "originalName": "JIDA December 2023-103-113.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 323985,
+      "versionLabel": 1,
+      "isLatest": true,
+      "source": "AUTHOR",
+      "remarks": null,
+      "createdAt": "2026-08-13T22:41:27.845Z"
+    }
+  ],
+  "assignments": [
+    {
+      "id": "876989e3-7438-430c-a343-e48da8fa7ac9",
+      "manuscriptId": "5e7ba963-85b1-4858-b0e2-5152883a5cd6",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "assignedById": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "deadline": "2026-08-20T00:00:00.000Z",
+      "progress": "FINISHED_REVIEW",
+      "createdAt": "2026-08-13T22:44:35.612Z",
+      "updatedAt": "2026-08-13T22:50:18.275Z"
+    },
+    {
+      "id": "0600b8a9-3fab-4e86-8e44-336a5c195d5a",
+      "manuscriptId": "0abb41b8-05a3-4066-91b6-f8080691ae47",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "assignedById": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "deadline": "2026-08-29T00:00:00.000Z",
+      "progress": "FINISHED_REVIEW",
+      "createdAt": "2026-08-12T23:37:18.628Z",
+      "updatedAt": "2026-08-12T23:39:29.458Z"
+    },
+    {
+      "id": "569b1169-f0e0-4e0a-b4e1-973d585b28ed",
+      "manuscriptId": "cad9ac5f-c200-4df7-825c-9a8f0dff8897",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "assignedById": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "deadline": "2026-08-20T00:00:00.000Z",
+      "progress": "FINISHED_REVIEW",
+      "createdAt": "2026-08-13T09:09:27.128Z",
+      "updatedAt": "2026-08-13T09:19:01.827Z"
+    },
+    {
+      "id": "65427912-dc38-4bd5-b360-140281b3d90f",
+      "manuscriptId": "c1a8afc2-3146-486c-aa92-de3dfe984e5b",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "assignedById": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "deadline": "2026-08-29T00:00:00.000Z",
+      "progress": "FINISHED_REVIEW",
+      "createdAt": "2026-08-12T23:26:32.625Z",
+      "updatedAt": "2026-08-13T20:24:09.498Z"
+    },
+    {
+      "id": "d24734dc-c54d-4b27-b120-3ba045297944",
+      "manuscriptId": "7fb3399f-fa13-407a-a503-0a58f2bf8c78",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "assignedById": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "deadline": "2026-08-20T00:00:00.000Z",
+      "progress": "FINISHED_REVIEW",
+      "createdAt": "2026-08-13T20:21:29.854Z",
+      "updatedAt": "2026-08-13T20:25:48.484Z"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "0f5b7b2d-4140-47bf-b1e4-8fd6b7b3984e",
+      "assignmentId": "65427912-dc38-4bd5-b360-140281b3d90f",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "commentsToAuthor": "nothing to change",
+      "specificSuggestions": null,
+      "commentsToEditor": "all is good",
+      "ratingTitle": null,
+      "ratingAbstract": null,
+      "ratingLiterature": null,
+      "ratingMethods": null,
+      "ratingConclusions": null,
+      "ratingReferences": null,
+      "ratingStructure": null,
+      "recommendation": "ACCEPT",
+      "attachmentStoredName": null,
+      "attachmentOriginalName": null,
+      "attachmentMimeType": null,
+      "attachmentSizeBytes": null,
+      "createdAt": "2026-08-12T23:28:42.451Z"
+    },
+    {
+      "id": "3997f55e-8edf-4708-859e-058bd69a986a",
+      "assignmentId": "0600b8a9-3fab-4e86-8e44-336a5c195d5a",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "commentsToAuthor": "minor change",
+      "specificSuggestions": null,
+      "commentsToEditor": "sent it back for correction",
+      "ratingTitle": null,
+      "ratingAbstract": null,
+      "ratingLiterature": null,
+      "ratingMethods": null,
+      "ratingConclusions": null,
+      "ratingReferences": null,
+      "ratingStructure": null,
+      "recommendation": "MINOR_REVISION",
+      "attachmentStoredName": "0f863493-6576-4e17-89a4-4fa10855e241.pdf",
+      "attachmentOriginalName": "Effect of Financial Planning on Quality Service Delivery in  Telecommunication Companies in Rwanda.pdf",
+      "attachmentMimeType": "application/pdf",
+      "attachmentSizeBytes": 369350,
+      "createdAt": "2026-08-12T23:39:29.451Z"
+    },
+    {
+      "id": "02f39c15-9a54-4352-9f91-eae846f1802a",
+      "assignmentId": "569b1169-f0e0-4e0a-b4e1-973d585b28ed",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "commentsToAuthor": "passed review",
+      "specificSuggestions": null,
+      "commentsToEditor": "passed review. can be published",
+      "ratingTitle": null,
+      "ratingAbstract": null,
+      "ratingLiterature": null,
+      "ratingMethods": null,
+      "ratingConclusions": null,
+      "ratingReferences": null,
+      "ratingStructure": null,
+      "recommendation": "ACCEPT",
+      "attachmentStoredName": null,
+      "attachmentOriginalName": null,
+      "attachmentMimeType": null,
+      "attachmentSizeBytes": null,
+      "createdAt": "2026-08-13T09:19:01.814Z"
+    },
+    {
+      "id": "67906915-6255-42ce-8e75-f84877325aea",
+      "assignmentId": "d24734dc-c54d-4b27-b120-3ba045297944",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "commentsToAuthor": "passed reviewed",
+      "specificSuggestions": null,
+      "commentsToEditor": "passed review. can be published",
+      "ratingTitle": null,
+      "ratingAbstract": null,
+      "ratingLiterature": null,
+      "ratingMethods": null,
+      "ratingConclusions": null,
+      "ratingReferences": null,
+      "ratingStructure": null,
+      "recommendation": "ACCEPT",
+      "attachmentStoredName": null,
+      "attachmentOriginalName": null,
+      "attachmentMimeType": null,
+      "attachmentSizeBytes": null,
+      "createdAt": "2026-08-13T20:25:48.479Z"
+    },
+    {
+      "id": "5992218e-676b-4d77-9d17-64b1aa56944b",
+      "assignmentId": "876989e3-7438-430c-a343-e48da8fa7ac9",
+      "reviewerId": "7098ad7e-6442-41ba-9673-607a6506148a",
+      "commentsToAuthor": "excellent manuscript",
+      "specificSuggestions": null,
+      "commentsToEditor": "excellent manuscript",
+      "ratingTitle": "EXCELLENT",
+      "ratingAbstract": "EXCELLENT",
+      "ratingLiterature": "EXCELLENT",
+      "ratingMethods": "EXCELLENT",
+      "ratingConclusions": "EXCELLENT",
+      "ratingReferences": "EXCELLENT",
+      "ratingStructure": "EXCELLENT",
+      "recommendation": "ACCEPT",
+      "attachmentStoredName": null,
+      "attachmentOriginalName": null,
+      "attachmentMimeType": null,
+      "attachmentSizeBytes": null,
+      "createdAt": "2026-08-13T22:50:18.271Z"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "52c06457-4ac1-4e3f-b0da-3f4a251fb543",
+      "manuscriptId": "c1a8afc2-3146-486c-aa92-de3dfe984e5b",
+      "editorId": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "decision": "REQUEST_REVISION",
+      "notes": "sent to author for revision",
+      "createdAt": "2026-08-12T23:20:18.770Z"
+    },
+    {
+      "id": "1790e74f-2f85-4418-baf6-d4bef7d39fa6",
+      "manuscriptId": "c1a8afc2-3146-486c-aa92-de3dfe984e5b",
+      "editorId": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "decision": "ACCEPT",
+      "notes": "Sent to author",
+      "createdAt": "2026-08-12T23:25:57.058Z"
+    },
+    {
+      "id": "f3bde47c-3272-4211-9f32-b1aa4f948547",
+      "manuscriptId": "0abb41b8-05a3-4066-91b6-f8080691ae47",
+      "editorId": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "decision": "ACCEPT",
+      "notes": "Sent to reviewer",
+      "createdAt": "2026-08-12T23:35:13.109Z"
+    },
+    {
+      "id": "907bedfd-a280-49aa-a612-574409111256",
+      "manuscriptId": "c1a8afc2-3146-486c-aa92-de3dfe984e5b",
+      "editorId": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "decision": "ACCEPT",
+      "notes": "now it has been published",
+      "createdAt": "2026-08-12T23:41:54.572Z"
+    },
+    {
+      "id": "20ac08b0-c897-40cf-a815-705b1fc14379",
+      "manuscriptId": "cad9ac5f-c200-4df7-825c-9a8f0dff8897",
+      "editorId": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "decision": "ACCEPT",
+      "notes": "passed intitial screen. sent for review",
+      "createdAt": "2026-08-13T09:05:15.419Z"
+    },
+    {
+      "id": "f57f2746-ff11-4934-942e-2f74bc7b0906",
+      "manuscriptId": "cad9ac5f-c200-4df7-825c-9a8f0dff8897",
+      "editorId": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "decision": "ACCEPT",
+      "notes": "accepted for publication",
+      "createdAt": "2026-08-13T09:49:38.556Z"
+    },
+    {
+      "id": "ed70e7f5-c2fe-46c0-bd22-d9670be71580",
+      "manuscriptId": "7fb3399f-fa13-407a-a503-0a58f2bf8c78",
+      "editorId": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "decision": "ACCEPT",
+      "notes": "passed initial screen. sent for review",
+      "createdAt": "2026-08-13T20:21:05.046Z"
+    },
+    {
+      "id": "7cdae716-7c11-48da-b1b1-d952fa4b6a1a",
+      "manuscriptId": "7fb3399f-fa13-407a-a503-0a58f2bf8c78",
+      "editorId": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "decision": "ACCEPT",
+      "notes": "published the manuscript",
+      "createdAt": "2026-08-13T20:28:14.756Z"
+    },
+    {
+      "id": "44c8b821-ab1a-4512-9616-82b7908467d9",
+      "manuscriptId": "5e7ba963-85b1-4858-b0e2-5152883a5cd6",
+      "editorId": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "decision": "ACCEPT",
+      "notes": "initial screen accepted.passed to review",
+      "createdAt": "2026-08-13T22:44:09.942Z"
+    },
+    {
+      "id": "c1447636-fbfb-413e-8442-c1c3755c5c75",
+      "manuscriptId": "5e7ba963-85b1-4858-b0e2-5152883a5cd6",
+      "editorId": "18bf2b0d-4380-4314-80c3-3031f0940e6d",
+      "decision": "ACCEPT",
+      "notes": "can be published",
+      "createdAt": "2026-08-13T22:56:56.004Z"
+    }
+  ],
+  "issues": [
+    {
+      "id": "04957958-3b41-46bc-8e44-6aa338a8419a",
+      "volume": 8,
+      "issueNumber": 1,
+      "year": 2026,
+      "title": null,
+      "createdAt": "2026-08-12T23:42:40.935Z"
+    },
+    {
+      "id": "a84b4ec7-36d2-404e-acce-29b93969d13d",
+      "volume": 7,
+      "issueNumber": 1,
+      "year": 2026,
+      "title": null,
+      "createdAt": "2026-08-13T09:46:59.779Z"
+    }
+  ],
+  "publications": [
+    {
+      "id": "f593b977-147f-4e04-88dd-c6e88d19d687",
+      "issueId": "04957958-3b41-46bc-8e44-6aa338a8419a",
+      "manuscriptId": "c1a8afc2-3146-486c-aa92-de3dfe984e5b",
+      "slug": "contribution-of-nurturing-learning-environment-to-achieving-teaching-objectives--c1a8afc2",
+      "scholarReady": false,
+      "publishedAt": "2026-08-12T23:42:41.006Z"
+    },
+    {
+      "id": "8da48607-3b75-492e-8348-6696758682e9",
+      "issueId": "a84b4ec7-36d2-404e-acce-29b93969d13d",
+      "manuscriptId": "cad9ac5f-c200-4df7-825c-9a8f0dff8897",
+      "slug": "contribution-of-employee-motivation-to-task-accomplishment-in-smes-in-rwanda-evi-cad9ac5f",
+      "scholarReady": true,
+      "publishedAt": "2026-08-13T09:50:46.702Z"
+    },
+    {
+      "id": "6c66d4a8-e68e-43a7-b7bd-4e95028ff00b",
+      "issueId": "a84b4ec7-36d2-404e-acce-29b93969d13d",
+      "manuscriptId": "7fb3399f-fa13-407a-a503-0a58f2bf8c78",
+      "slug": "effects-of-teamwork-on-teachers-performance-in-selected-schools-a-case-of-kinyin-7fb3399f",
+      "scholarReady": true,
+      "publishedAt": "2026-08-13T20:29:00.647Z"
+    },
+    {
+      "id": "2e08921a-62ba-446c-9767-1ee750c478de",
+      "issueId": "a84b4ec7-36d2-404e-acce-29b93969d13d",
+      "manuscriptId": "5e7ba963-85b1-4858-b0e2-5152883a5cd6",
+      "slug": "determinants-of-students-academic-performance-at-adventist-university-of-central-5e7ba963",
+      "scholarReady": true,
+      "publishedAt": "2026-08-13T22:57:29.406Z"
+    }
+  ],
+  "settings": [
+    {
+      "id": 1,
+      "submissionDeadline": null,
+      "openForSubmissions": true,
+      "updatedAt": "2026-08-12T23:14:39.035Z"
+    }
+  ]
+}

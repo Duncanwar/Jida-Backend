@@ -1,6 +1,7 @@
 ﻿import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
@@ -139,5 +140,26 @@ publicRouter.get(
       return;
     }
     res.download(abs, file.originalName);
+  }),
+);
+
+const subscribeSchema = z.object({
+  email: z.string().email().transform((v) => v.toLowerCase().trim()),
+});
+
+publicRouter.post(
+  "/subscribe",
+  asyncHandler(async (req, res) => {
+    const body = subscribeSchema.parse(req.body);
+
+    // Idempotent — resubscribing (or double-clicking the button) is a no-op,
+    // not an error the reader needs to see.
+    await prisma.newsletterSubscriber.upsert({
+      where: { email: body.email },
+      create: { email: body.email },
+      update: {},
+    });
+
+    res.status(201).json({ message: "Subscribed" });
   }),
 );

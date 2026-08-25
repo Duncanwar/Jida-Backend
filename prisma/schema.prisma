@@ -331,6 +331,14 @@ model Publication {
   @@index([issueId])
 }
 
+/// A reader who asked to be notified when a new issue is published. Public —
+/// no account required, so there is no `User` relation.
+model NewsletterSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
 /// A user-set reminder tied to a manuscript. In-app only — no email is sent.
 /// A reminder becomes visible purely by the clock passing `visibleAt`, so no
 /// background job is needed: the list endpoint just filters on it.

@@ -130,7 +130,12 @@ async function tick(): Promise<void> {
     const state = loadState();
     const last = state.lastBackupAt ? new Date(state.lastBackupAt).getTime() : 0;
     if (Date.now() - last >= BACKUP_INTERVAL_MS) {
-      await runBackup();
+      const settings = await prisma.journalSettings.findUnique({ where: { id: 1 } });
+      if (settings?.automaticBackupsEnabled === false) {
+        console.info("[scheduler] automatic backups are disabled in system settings — skipping");
+      } else {
+        await runBackup();
+      }
     }
   } catch (err) {
     console.error("[scheduler] backup job failed", err);

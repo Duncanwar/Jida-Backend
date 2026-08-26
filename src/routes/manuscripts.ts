@@ -88,7 +88,9 @@ function authorVisibleReviews(
 
 const coAuthorSchema = z.object({
   fullName: z.string().min(1, "A co-author needs a name"),
-  email: z.string().email("A co-author needs a valid email address"),
+  /// Only the name is required — email is a nice-to-have for correspondence,
+  /// not a gate on submitting.
+  email: z.union([z.string().email(), z.literal("")]).optional(),
   affiliation: z.string().optional(),
   /** Marks a co-author who also fields correspondence about the manuscript. */
   isCorresponding: z.coerce.boolean().optional(),
@@ -167,12 +169,15 @@ manuscriptsRouter.post(
         abstract,
         keywords,
         references: references?.trim() ? references : null,
+        // Snapshot of the deadline in effect right now, so this manuscript
+        // can later be grouped by the submission period it came in under.
+        submissionDeadline: settings.submissionDeadline,
         ...(coAuthors.length
           ? {
               coAuthors: {
                 create: coAuthors.map((c, i) => ({
                   fullName: c.fullName,
-                  email: c.email,
+                  email: c.email?.trim() || null,
                   affiliation: c.affiliation ?? null,
                   isCorresponding: c.isCorresponding ?? false,
                   position: i,

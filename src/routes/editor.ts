@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
 import { z } from "zod";
-import { EditorialDecisionType, FileSource, ManuscriptStatus, Role } from "@prisma/client";
+import { DecisionStage, EditorialDecisionType, FileSource, ManuscriptStatus, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
@@ -16,6 +16,8 @@ import {
   notifyAuthorEditedFile,
   notifyAuthorPublished,
   notifyAuthorStatus,
+  notifyEditorsOfDecision,
+  notifyReviewerOfFinalDecision,
 } from "../services/notifications.js";
 import { slugify } from "../utils/slug.js";
 import { manuscriptUpload } from "../utils/upload.js";
@@ -82,6 +84,7 @@ editorRouter.get(
       title: m.title,
       status: m.status,
       submittedAt: m.createdAt,
+      submissionDeadline: m.submissionDeadline,
       authorName: [m.author.firstName, m.author.lastName].filter(Boolean).join(" ") || m.author.email,
       // Full contact details for the editor's author hover card.
       author: {
@@ -98,6 +101,7 @@ editorRouter.get(
       })),
       decisions: m.decisions.map((d) => ({
         decision: d.decision,
+        stage: d.stage,
         notes: d.notes,
         createdAt: d.createdAt,
         editorName:
@@ -255,6 +259,10 @@ editorRouter.delete(
 const decisionSchema = z.object({
   decision: z.nativeEnum(EditorialDecisionType),
   notes: z.string().optional(),
+  /// Which pass through the pipeline this decision belongs to. Optional for
+  /// backward compatibility with any caller that predates the distinction —
+  /// omitting it just skips the stage-specific extra notification below.
+  stage: z.nativeEnum(DecisionStage).optional(),
 });
 
 editorRouter.post(
@@ -270,7 +278,12 @@ editorRouter.post(
     let nextStatus: ManuscriptStatus;
     switch (body.decision) {
       case EditorialDecisionType.ACCEPT:
-        nextStatus = ManuscriptStatus.ACCEPTED;
+        // Initial screening's "accept" means "send to peer review", not
+        // "ready to publish" — that only happens at final screening.
+        nextStatus =
+          body.stage === DecisionStage.INITIAL_SCREENING
+            ? ManuscriptStatus.UNDER_REVIEW
+            : ManuscriptStatus.ACCEPTED;
         break;
       case EditorialDecisionType.REJECT:
         nextStatus = ManuscriptStatus.REJECTED;
@@ -288,6 +301,7 @@ editorRouter.post(
           manuscriptId: manuscript.id,
           editorId: req.user!.id,
           decision: body.decision,
+          stage: body.stage,
           notes: body.notes,
         },
       }),
@@ -300,6 +314,21 @@ editorRouter.post(
     const author = await prisma.user.findUniqueOrThrow({ where: { id: manuscript.authorId } });
     await notifyAuthorStatus(author.email, manuscript.title, nextStatus);
 
+    // Initial screening notes are meant for the author and the rest of the
+    // editorial team; final screening notes are meant for the reviewer(s)
+    // whose evaluation drove the decision, plus the rest of the team.
+    if (body.stage === DecisionStage.INITIAL_SCREENING) {
+      await notifyEditorsOfDecision(manuscript.title, body.decision, body.notes, req.user!.id);
+    } else if (body.stage === DecisionStage.FINAL_SCREENING) {
+      await notifyReviewerOfFinalDecision(
+        manuscript.id,
+        manuscript.title,
+        body.decision,
+        body.notes,
+        req.user!.id,
+      );
+    }
+
     const updated = await prisma.manuscript.findUniqueOrThrow({ where: { id: manuscript.id } });
     res.json(updated);
   }),
@@ -310,6 +339,7 @@ const issueSchema = z.object({
   issueNumber: z.number().int().positive(),
   year: z.number().int().min(1900).max(2100),
   title: z.string().optional(),
+  specialIssue: z.boolean().optional(),
 });
 
 editorRouter.post(
@@ -325,7 +355,10 @@ editorRouter.post(
         },
       },
       create: body,
-      update: { ...(body.title ? { title: body.title } : {}) },
+      update: {
+        ...(body.title ? { title: body.title } : {}),
+        ...(body.specialIssue !== undefined ? { specialIssue: body.specialIssue } : {}),
+      },
     });
     res.status(201).json(issue);
   }),
@@ -480,6 +513,61 @@ editorRouter.patch(
   }),
 );
 
+const announcementSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(2000),
+  submissionDeadline: z.coerce.date().nullable().optional(),
+  openForSubmissions: z.boolean().optional(),
+});
+
+/**
+ * Broadcasts a submission-period announcement to every user — author,
+ * reviewer, and editor dashboards alike — and, if given, updates the
+ * journal-wide submission deadline / open flag that drives the "submissions
+ * open" banner. One Notification row per recipient, sent exactly once
+ * (including to the posting editor themselves, so their own notification
+ * feed doubles as announcement history — no separate history endpoint
+ * needed). An announcement is identified purely by `manuscriptId: null` —
+ * there is no separate announcement table.
+ */
+editorRouter.post(
+  "/announcements",
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const body = announcementSchema.parse(req.body);
+
+    if (body.submissionDeadline !== undefined || body.openForSubmissions !== undefined) {
+      await prisma.journalSettings.upsert({
+        where: { id: 1 },
+        create: {
+          id: 1,
+          submissionDeadline: body.submissionDeadline ?? undefined,
+          openForSubmissions: body.openForSubmissions ?? true,
+        },
+        update: {
+          ...(body.submissionDeadline !== undefined && { submissionDeadline: body.submissionDeadline }),
+          ...(body.openForSubmissions !== undefined && { openForSubmissions: body.openForSubmissions }),
+        },
+      });
+    }
+
+    // Every real account gets it exactly once, including the posting editor
+    // — no separate "confirmation row" hack, and no double-count for an
+    // account that holds more than one role.
+    const recipients = await prisma.user.findMany({ select: { id: true } });
+    const visibleAt = new Date();
+    await prisma.notification.createMany({
+      data: recipients.map((r) => ({
+        userId: r.id,
+        title: body.title,
+        body: body.body,
+        visibleAt,
+      })),
+    });
+
+    res.status(201).json({ recipientCount: recipients.length });
+  }),
+);
+
 /** Editor download of manuscript file (same as reviewer). */
 editorRouter.get(
   "/manuscripts/:id/download",
@@ -504,15 +592,16 @@ const editedFileSchema = z.object({
   remarks: z.string().min(1, "Remarks are required"),
 });
 
-/** Editor uploads a new version of the manuscript with remarks for the author. */
+/**
+ * Editor uploads a new version of the manuscript with remarks for the
+ * author. The file itself is optional — an editor may want to leave remarks
+ * without attaching a revised file, e.g. pointing the author to fix
+ * something themselves.
+ */
 editorRouter.post(
   "/manuscripts/:id/edited-file",
   manuscriptUpload.single("file"),
   asyncHandler(async (req: AuthedRequest, res) => {
-    if (!req.file) {
-      res.status(400).json({ error: "file is required" });
-      return;
-    }
     const body = editedFileSchema.parse(req.body);
     const manuscript = await prisma.manuscript.findUnique({ where: { id: req.params.id } });
     if (!manuscript) {
@@ -520,31 +609,33 @@ editorRouter.post(
       return;
     }
 
-    const latest = await prisma.manuscriptFile.findFirst({
-      where: { manuscriptId: manuscript.id },
-      orderBy: { versionLabel: "desc" },
-    });
-    const nextVersion = (latest?.versionLabel ?? 0) + 1;
-
-    await prisma.$transaction([
-      prisma.manuscriptFile.updateMany({
+    if (req.file) {
+      const latest = await prisma.manuscriptFile.findFirst({
         where: { manuscriptId: manuscript.id },
-        data: { isLatest: false },
-      }),
-      prisma.manuscriptFile.create({
-        data: {
-          manuscriptId: manuscript.id,
-          storedName: req.file.filename,
-          originalName: req.file.originalname,
-          mimeType: req.file.mimetype,
-          sizeBytes: req.file.size,
-          versionLabel: nextVersion,
-          isLatest: true,
-          source: FileSource.EDITOR,
-          remarks: body.remarks,
-        },
-      }),
-    ]);
+        orderBy: { versionLabel: "desc" },
+      });
+      const nextVersion = (latest?.versionLabel ?? 0) + 1;
+
+      await prisma.$transaction([
+        prisma.manuscriptFile.updateMany({
+          where: { manuscriptId: manuscript.id },
+          data: { isLatest: false },
+        }),
+        prisma.manuscriptFile.create({
+          data: {
+            manuscriptId: manuscript.id,
+            storedName: req.file.filename,
+            originalName: req.file.originalname,
+            mimeType: req.file.mimetype,
+            sizeBytes: req.file.size,
+            versionLabel: nextVersion,
+            isLatest: true,
+            source: FileSource.EDITOR,
+            remarks: body.remarks,
+          },
+        }),
+      ]);
+    }
 
     const author = await prisma.user.findUniqueOrThrow({ where: { id: manuscript.authorId } });
     await notifyAuthorEditedFile(author.email, manuscript.title, body.remarks);

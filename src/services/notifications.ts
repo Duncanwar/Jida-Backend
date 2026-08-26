@@ -167,6 +167,65 @@ export async function notifyEditorPendingDecision(
   });
 }
 
+/** Initial screening decision — notify the rest of the editorial team. */
+export async function notifyEditorsOfDecision(
+  title: string,
+  decision: string,
+  notes: string | undefined,
+  decidingEditorId: string,
+): Promise<void> {
+  const editors = await prisma.user.findMany({
+    where: { roles: { hasSome: storedRolesGranting(Role.EDITOR) }, id: { not: decidingEditorId } },
+    select: { email: true },
+  });
+  const readable = decision.replace(/_/g, " ").toLowerCase();
+  const mail = notificationEmail({
+    heading: "Initial screening decision recorded",
+    subject: `JIDA: initial screening — "${title}"`,
+    lines: [
+      `An initial screening decision was recorded for "${title}": ${readable}.`,
+      ...(notes ? [notes] : []),
+    ],
+    actionUrl: editorDashboard(),
+    actionLabel: "Open editor dashboard",
+  });
+  await Promise.all(editors.map((e) => sendMailSafe({ to: e.email, ...mail })));
+}
+
+/** Final screening decision — notify the reviewer(s) whose evaluation led to it, and the rest of the editorial team. */
+export async function notifyReviewerOfFinalDecision(
+  manuscriptId: string,
+  title: string,
+  decision: string,
+  notes: string | undefined,
+  decidingEditorId: string,
+): Promise<void> {
+  const [reviewers, editors] = await Promise.all([
+    prisma.user.findMany({
+      where: { reviewAssignments: { some: { manuscriptId } } },
+      select: { email: true },
+    }),
+    prisma.user.findMany({
+      where: { roles: { hasSome: storedRolesGranting(Role.EDITOR) }, id: { not: decidingEditorId } },
+      select: { email: true },
+    }),
+  ]);
+  const readable = decision.replace(/_/g, " ").toLowerCase();
+  const mail = notificationEmail({
+    heading: "Final screening decision recorded",
+    subject: `JIDA: final decision — "${title}"`,
+    lines: [
+      `A final decision was recorded for "${title}", based on your evaluation: ${readable}.`,
+      ...(notes ? [notes] : []),
+    ],
+    actionUrl: reviewerDashboard(),
+    actionLabel: "Open my dashboard",
+  });
+  await Promise.all(
+    [...reviewers, ...editors].map((u) => sendMailSafe({ to: u.email, ...mail })),
+  );
+}
+
 export async function notifyAuthorPublished(
   email: string,
   title: string,

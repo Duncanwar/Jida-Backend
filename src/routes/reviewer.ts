@@ -27,7 +27,14 @@ function toAssignmentDTO(a: {
   manuscriptId: string;
   deadline: Date;
   progress: string;
-  manuscript: { id: string; title: string; abstract: string; keywords: string[]; createdAt: Date };
+  manuscript: {
+    id: string;
+    title: string;
+    abstract: string;
+    keywords: string[];
+    createdAt: Date;
+    submissionDeadline?: Date | null;
+  };
   review: Review | null;
 }) {
   return {
@@ -37,6 +44,7 @@ function toAssignmentDTO(a: {
     abstract: a.manuscript.abstract,
     keywords: a.manuscript.keywords,
     submittedAt: a.manuscript.createdAt,
+    submissionDeadline: a.manuscript.submissionDeadline,
     deadline: a.deadline,
     progress: a.progress,
     recommendation: a.review?.recommendation,
@@ -64,6 +72,7 @@ reviewerRouter.get(
             keywords: true,
             status: true,
             createdAt: true,
+            submissionDeadline: true,
             author: { select: { firstName: true, lastName: true, affiliation: true } },
           },
         },

@@ -57,6 +57,16 @@ enum EditorialDecisionType {
   REQUEST_REVISION
 }
 
+/// Which pass through the pipeline a decision belongs to. Null on decisions
+/// made before this distinction existed. Initial screening happens before
+/// peer review (desk decision); final screening happens after reviews are
+/// in. Both use the same EditorialDecisionType outcomes — only who gets
+/// notified, and which manuscripts are eligible, differs by stage.
+enum DecisionStage {
+  INITIAL_SCREENING
+  FINAL_SCREENING
+}
+
 /// Who produced a given manuscript file version.
 enum FileSource {
   AUTHOR
@@ -96,6 +106,10 @@ model User {
   /// Google's stable subject identifier ("sub" claim). Unique when present.
   googleId        String?      @unique
   avatarUrl       String?
+
+  /// Soft-disable: an inactive account keeps its data but cannot sign in.
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -143,10 +157,16 @@ model PasswordResetToken {
 }
 
 model JournalSettings {
-  id                 Int       @id @default(1)
-  submissionDeadline DateTime?
-  openForSubmissions Boolean   @default(true)
-  updatedAt          DateTime  @updatedAt
+  id                        Int       @id @default(1)
+  submissionDeadline        DateTime?
+  openForSubmissions        Boolean   @default(true)
+  /// Gates the scheduler's daily backup job (src/services/scheduler.ts) — the
+  /// job itself always exists, this just lets an admin pause it.
+  automaticBackupsEnabled   Boolean   @default(true)
+  /// Gates outbound SMTP mail (src/services/email.ts sendMail) — in-app
+  /// notification-bell rows are unaffected, this only silences real email.
+  emailNotificationsEnabled Boolean   @default(true)
+  updatedAt                 DateTime  @updatedAt
 }
 
 model Manuscript {
@@ -159,6 +179,11 @@ model Manuscript {
   /// Optional — authors may submit without pasting a reference list.
   references  String?          @db.Text
   status      ManuscriptStatus @default(SUBMITTED)
+  /// The submission deadline in effect (JournalSettings.submissionDeadline)
+  /// at the moment this manuscript was submitted — lets manuscripts be
+  /// grouped by submission period. Null for submissions made before this
+  /// field existed, or when no deadline was set at submission time.
+  submissionDeadline DateTime?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
@@ -181,7 +206,8 @@ model CoAuthor {
   manuscriptId   String
   manuscript     Manuscript @relation(fields: [manuscriptId], references: [id], onDelete: Cascade)
   fullName       String
-  email          String
+  /// Optional — only the co-author's name is required on the submission form.
+  email          String?
   affiliation    String?
   /// Whether this co-author also fields correspondence about the manuscript.
   isCorresponding Boolean   @default(false)
@@ -299,6 +325,8 @@ model EditorialDecision {
   editorId     String
   editor       User                  @relation(fields: [editorId], references: [id], onDelete: Cascade)
   decision     EditorialDecisionType
+  /// Null on decisions made before initial/final screening was distinguished.
+  stage        DecisionStage?
   notes        String?               @db.Text
   createdAt    DateTime              @default(now())
 
@@ -311,6 +339,9 @@ model Issue {
   issueNumber Int
   year        Int
   title       String?
+  /// Marks this issue as a special issue, so its publications can be
+  /// classified separately in the archive.
+  specialIssue Boolean @default(false)
   createdAt   DateTime @default(now())
 
   publications Publication[]

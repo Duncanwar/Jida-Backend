@@ -183,6 +183,16 @@ authRouter.post(
       return;
     }
 
+    if (user.isActive === false) {
+      res.status(403).json({
+        error: "This account has been deactivated. Contact an administrator.",
+        code: "ACCOUNT_DEACTIVATED",
+      });
+      return;
+    }
+
+    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+
     const token = signAccessToken(user.id, user.role, user.emailVerified, expandRoles(heldRoles));
     res.json({
       user: publicUser(user),

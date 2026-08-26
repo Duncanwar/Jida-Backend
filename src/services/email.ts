@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
+import { prisma } from "../lib/prisma.js";
 
 let transporter: nodemailer.Transporter | null = null;
 
@@ -69,6 +70,12 @@ function sleep(ms: number): Promise<void> {
  * because of a mail outage should use {@link sendMailSafe}.
  */
 export async function sendMail(options: MailOptions): Promise<void> {
+  const settings = await prisma.journalSettings.findUnique({ where: { id: 1 } });
+  if (settings?.emailNotificationsEnabled === false) {
+    console.info("[email:disabled]", { to: options.to, subject: options.subject });
+    return;
+  }
+
   const tx = getTransporter();
   const from = env.SMTP_FROM ?? "JIDA <noreply@localhost>";
 

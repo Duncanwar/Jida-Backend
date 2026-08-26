@@ -115,3 +115,27 @@ notificationsRouter.patch(
     res.status(204).end();
   }),
 );
+
+/** Clears (permanently deletes) one of the caller's own notifications. */
+notificationsRouter.delete(
+  "/:id",
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const result = await prisma.notification.deleteMany({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
+    if (result.count === 0) {
+      res.status(404).json({ error: "Notification not found" });
+      return;
+    }
+    res.status(204).end();
+  }),
+);
+
+/** Clears every one of the caller's own notifications. */
+notificationsRouter.delete(
+  "/",
+  asyncHandler(async (req: AuthedRequest, res) => {
+    await prisma.notification.deleteMany({ where: { userId: req.user!.id } });
+    res.status(204).end();
+  }),
+);

@@ -18,6 +18,8 @@ const USER_SELECT = {
   firstName: true,
   lastName: true,
   affiliation: true,
+  isActive: true,
+  lastLoginAt: true,
   createdAt: true,
 } as const;
 
@@ -29,6 +31,8 @@ function toAdminUser(u: {
   firstName: string | null;
   lastName: string | null;
   affiliation: string | null;
+  isActive: boolean;
+  lastLoginAt: Date | null;
   createdAt: Date;
 }) {
   const name = [u.firstName, u.lastName].filter(Boolean).join(" ");
@@ -39,6 +43,8 @@ function toAdminUser(u: {
     roles: normalizeRoles(u.role, u.roles),
     name: name || undefined,
     institution: u.affiliation ?? undefined,
+    isActive: u.isActive,
+    lastLoginAt: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
     createdAt: u.createdAt.toISOString(),
   };
 }
@@ -138,6 +144,38 @@ adminRouter.patch(
   }),
 );
 
+const updateStatusSchema = z.object({ isActive: z.boolean() });
+
+/**
+ * Soft-disable instead of delete — an admin can lock an account out without
+ * destroying its manuscripts/reviews/history. Mirrors the self-lockout guard
+ * on the roles route above.
+ */
+adminRouter.patch(
+  "/users/:id/status",
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const body = updateStatusSchema.parse(req.body);
+
+    if (req.params.id === req.user!.id && !body.isActive) {
+      res.status(400).json({ error: "You cannot deactivate your own account" });
+      return;
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { isActive: body.isActive },
+      select: USER_SELECT,
+    });
+    res.json(toAdminUser(user));
+  }),
+);
+
 adminRouter.delete(
   "/users/:id",
   asyncHandler(async (req: AuthedRequest, res) => {
@@ -152,5 +190,47 @@ adminRouter.delete(
     }
     await prisma.user.delete({ where: { id: req.params.id } });
     res.json({ message: "User deleted" });
+  }),
+);
+
+// ─── System settings ─────────────────────────────────────────────────────────
+
+function toAdminSettings(s: {
+  automaticBackupsEnabled: boolean;
+  emailNotificationsEnabled: boolean;
+}) {
+  return {
+    automaticBackupsEnabled: s.automaticBackupsEnabled,
+    emailNotificationsEnabled: s.emailNotificationsEnabled,
+  };
+}
+
+adminRouter.get(
+  "/settings",
+  asyncHandler(async (_req, res) => {
+    const settings = await prisma.journalSettings.upsert({
+      where: { id: 1 },
+      update: {},
+      create: { id: 1 },
+    });
+    res.json(toAdminSettings(settings));
+  }),
+);
+
+const updateSettingsSchema = z.object({
+  automaticBackupsEnabled: z.boolean().optional(),
+  emailNotificationsEnabled: z.boolean().optional(),
+});
+
+adminRouter.patch(
+  "/settings",
+  asyncHandler(async (req, res) => {
+    const body = updateSettingsSchema.parse(req.body);
+    const settings = await prisma.journalSettings.upsert({
+      where: { id: 1 },
+      update: body,
+      create: { id: 1, ...body },
+    });
+    res.json(toAdminSettings(settings));
   }),
 );

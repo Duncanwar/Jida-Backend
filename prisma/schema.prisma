@@ -44,6 +44,23 @@ enum ReviewerProgress {
   FINISHED_REVIEW
 }
 
+/// Whether a reviewer has accepted the manuscript they were assigned. A
+/// freshly created assignment is PENDING until the reviewer responds to the
+/// notification / email; DECLINED keeps the row (with a reason) as a record.
+enum AssignmentResponse {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+/// Lifecycle of an editor's "become a reviewer" invitation.
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
 enum ReviewRecommendation {
   ACCEPT
   MINOR_REVISION
@@ -117,6 +134,7 @@ model User {
   manuscriptsAuthored Manuscript[]           @relation("AuthorManuscripts")
   reviewAssignments ReviewAssignment[]      @relation("ReviewerAssignments")
   assignmentsMade    ReviewAssignment[]      @relation("EditorAssignments")
+  reviewerInvitationsSent ReviewerInvitation[] @relation("SentReviewerInvitations")
   reviews            Review[]
   editorialDecisions EditorialDecision[]
   reviewerFeedback   ReviewerFeedback[]
@@ -179,6 +197,10 @@ model Manuscript {
   /// Optional — authors may submit without pasting a reference list.
   references  String?          @db.Text
   status      ManuscriptStatus @default(SUBMITTED)
+  /// Author ticked "revised manuscript" on the submission form — tells the
+  /// editor and reviewers this is a revised version of earlier work rather
+  /// than a fresh submission. Also set when a revision file is uploaded.
+  isRevised   Boolean          @default(false)
   /// The submission deadline in effect (JournalSettings.submissionDeadline)
   /// at the moment this manuscript was submitted — lets manuscripts be
   /// grouped by submission period. Null for submissions made before this
@@ -246,6 +268,15 @@ model ReviewAssignment {
   assignedBy   User             @relation("EditorAssignments", fields: [assignedById], references: [id], onDelete: Cascade)
   deadline     DateTime
   progress     ReviewerProgress @default(NOT_STARTED)
+  /// Whether the reviewer has accepted this specific assignment. They are
+  /// notified (in-app + email) on assignment and must accept before the
+  /// review form opens; declining stores a reason and notifies the editor.
+  response      AssignmentResponse @default(PENDING)
+  declineReason String?            @db.Text
+  respondedAt   DateTime?
+  /// SHA-256 hash of the magic-link token that lets the reviewer accept or
+  /// decline straight from the assignment email without signing in.
+  responseToken String?            @unique
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
@@ -253,6 +284,28 @@ model ReviewAssignment {
 
   @@unique([manuscriptId, reviewerId])
   @@index([reviewerId])
+}
+
+/// An editor's invitation for someone to join JIDA as a reviewer. Sent by
+/// email to any address; accepting provisions a REVIEWER account (or adds the
+/// role to an existing one). Only the token hash is stored so a database dump
+/// cannot be replayed.
+model ReviewerInvitation {
+  id            String           @id @default(uuid())
+  email         String
+  /// The editor's personal note, shown verbatim in the invitation email.
+  message       String           @db.Text
+  invitedById   String
+  invitedBy     User             @relation("SentReviewerInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
+  tokenHash     String           @unique
+  status        InvitationStatus @default(PENDING)
+  declineReason String?          @db.Text
+  expiresAt     DateTime
+  respondedAt   DateTime?
+  createdAt     DateTime         @default(now())
+
+  @@index([email])
+  @@index([invitedById])
 }
 
 model Review {
@@ -381,6 +434,14 @@ model Notification {
   manuscript   Manuscript? @relation(fields: [manuscriptId], references: [id], onDelete: Cascade)
   title        String
   body         String
+  /// What this notification is about, so the frontend can render the right
+  /// affordances: GENERIC (plain), REVIEW_ASSIGNMENT (Accept/Decline the
+  /// assignment `refId`), ASSIGNMENT_RESPONSE / REVIEWER_INVITATION (outcome
+  /// notices to the editor).
+  kind         String      @default("GENERIC")
+  /// Id of the row the notification's actions target (a ReviewAssignment or
+  /// ReviewerInvitation), when `kind` is not GENERIC.
+  refId        String?
   visibleAt    DateTime
   readAt       DateTime?
   createdAt    DateTime    @default(now())

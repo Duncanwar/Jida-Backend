@@ -2,7 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
 import { z } from "zod";
-import { DecisionStage, EditorialDecisionType, FileSource, ManuscriptStatus, Role } from "@prisma/client";
+import {
+  AssignmentResponse,
+  DecisionStage,
+  EditorialDecisionType,
+  FileSource,
+  InvitationStatus,
+  ManuscriptStatus,
+  Role,
+} from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
@@ -17,6 +25,7 @@ import {
   notifyAuthorPublished,
   notifyAuthorStatus,
   notifyEditorsOfDecision,
+  notifyReviewerInvitation,
   notifyReviewerOfFinalDecision,
 } from "../services/notifications.js";
 import { slugify } from "../utils/slug.js";
@@ -25,6 +34,10 @@ import { storedRolesGranting } from "../utils/roles.js";
 import { toFullReview } from "../utils/reviewForm.js";
 import { checkScholarReadiness, type ScholarSubject } from "../services/scholar.js";
 import { sendReviewerAssignmentEmail } from "./reviewer.js";
+import { hashToken, randomToken } from "../utils/cryptoToken.js";
+
+/** A manuscript may carry at most this many reviewers (FR — blind peer review). */
+const MAX_REVIEWERS_PER_MANUSCRIPT = 2;
 
 export const editorRouter = Router();
 // Chief and associate editors share this portal: both imply Role.EDITOR, so the
@@ -41,6 +54,81 @@ editorRouter.get(
       select: { id: true, email: true, firstName: true, lastName: true, affiliation: true },
     });
     res.json(reviewers);
+  }),
+);
+
+// ─── Reviewer invitations (FR — grow the reviewer pool) ────────────────────
+
+const invitationSchema = z.object({
+  email: z.string().email(),
+  message: z.string().trim().min(1).max(4000),
+});
+
+/** Days a reviewer invitation link stays valid. */
+const INVITATION_TTL_DAYS = 7;
+
+/** Editor invites anyone by email to become a JIDA reviewer. */
+editorRouter.post(
+  "/reviewer-invitations",
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const body = invitationSchema.parse(req.body);
+    const rawToken = randomToken();
+    const inviter = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+    const invitation = await prisma.reviewerInvitation.create({
+      data: {
+        email: body.email.toLowerCase(),
+        message: body.message,
+        invitedById: req.user!.id,
+        tokenHash: hashToken(rawToken),
+        expiresAt: new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000),
+      },
+    });
+    await notifyReviewerInvitation({
+      email: invitation.email,
+      inviterName: [inviter.firstName, inviter.lastName].filter(Boolean).join(" ") || inviter.email,
+      message: body.message,
+      rawToken,
+    });
+    res.status(201).json({
+      id: invitation.id,
+      email: invitation.email,
+      status: invitation.status,
+      createdAt: invitation.createdAt,
+      expiresAt: invitation.expiresAt,
+    });
+  }),
+);
+
+/** The editor's own sent invitations, newest first — the Peer Review tracking list. */
+editorRouter.get(
+  "/reviewer-invitations",
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const rows = await prisma.reviewerInvitation.findMany({
+      where: { invitedById: req.user!.id },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        email: true,
+        status: true,
+        declineReason: true,
+        respondedAt: true,
+        expiresAt: true,
+        createdAt: true,
+      },
+    });
+    // Surface expiry without a background job — a still-PENDING row past its
+    // date reads as EXPIRED.
+    const now = Date.now();
+    res.json(
+      rows.map((r) => ({
+        ...r,
+        status:
+          r.status === InvitationStatus.PENDING && r.expiresAt.getTime() < now
+            ? InvitationStatus.EXPIRED
+            : r.status,
+      })),
+    );
   }),
 );
 
@@ -85,6 +173,7 @@ editorRouter.get(
       status: m.status,
       submittedAt: m.createdAt,
       submissionDeadline: m.submissionDeadline,
+      isRevised: m.isRevised,
       authorName: [m.author.firstName, m.author.lastName].filter(Boolean).join(" ") || m.author.email,
       // Full contact details for the editor's author hover card.
       author: {
@@ -112,6 +201,9 @@ editorRouter.get(
         manuscriptId: a.manuscriptId,
         deadline: a.deadline,
         progress: a.progress,
+        response: a.response,
+        declineReason: a.declineReason,
+        respondedAt: a.respondedAt,
         recommendation: a.review?.recommendation,
         commentsToAuthor: a.review?.commentsToAuthor,
         commentsToEditor: a.review?.commentsToEditor,
@@ -196,8 +288,24 @@ editorRouter.post(
       return;
     }
 
+    // A manuscript may carry at most two reviewers. Count the reviewers it
+    // would end up with — those already assigned, plus any new ones in this
+    // request — and refuse if that exceeds the cap.
+    const existing = await prisma.reviewAssignment.findMany({
+      where: { manuscriptId: manuscript.id },
+      select: { reviewerId: true },
+    });
+    const resulting = new Set<string>([...existing.map((e) => e.reviewerId), ...reviewerIds]);
+    if (resulting.size > MAX_REVIEWERS_PER_MANUSCRIPT) {
+      res.status(400).json({
+        error: `A manuscript can have at most ${MAX_REVIEWERS_PER_MANUSCRIPT} reviewers.`,
+      });
+      return;
+    }
+
     for (const a of body.assignments) {
-      await prisma.reviewAssignment.upsert({
+      const wasNew = !existing.some((e) => e.reviewerId === a.reviewerId);
+      const assignment = await prisma.reviewAssignment.upsert({
         where: {
           manuscriptId_reviewerId: { manuscriptId: manuscript.id, reviewerId: a.reviewerId },
         },
@@ -209,7 +317,12 @@ editorRouter.post(
         },
         update: { deadline: a.deadline, assignedById: req.user!.id },
       });
-      await sendReviewerAssignmentEmail(a.reviewerId, manuscript.title, a.deadline);
+      // Only (re)send the accept/decline invitation for a genuinely new
+      // assignment — bumping a deadline should not re-prompt a reviewer who
+      // already accepted.
+      if (wasNew) {
+        await sendReviewerAssignmentEmail(assignment.id, a.reviewerId, manuscript.title, a.deadline);
+      }
     }
 
     await prisma.manuscript.update({

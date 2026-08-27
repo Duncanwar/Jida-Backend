@@ -162,12 +162,16 @@ manuscriptsRouter.post(
       .map((k) => k.trim())
       .filter(Boolean);
 
+    // Multipart booleans arrive as the strings "true"/"false".
+    const isRevised = req.body?.isRevised === "true" || req.body?.isRevised === true;
+
     const manuscript = await prisma.manuscript.create({
       data: {
         authorId: req.user!.id,
         title,
         abstract,
         keywords,
+        isRevised,
         references: references?.trim() ? references : null,
         // Snapshot of the deadline in effect right now, so this manuscript
         // can later be grouped by the submission period it came in under.
@@ -439,7 +443,9 @@ manuscriptsRouter.post(
       }),
       prisma.manuscript.update({
         where: { id: manuscript.id },
-        data: { status: "UNDER_REVIEW" },
+        // A resubmission is by definition a revised manuscript — flag it so
+        // the editor and reviewers see that on the queue.
+        data: { status: "UNDER_REVIEW", isRevised: true },
       }),
     ]);
 

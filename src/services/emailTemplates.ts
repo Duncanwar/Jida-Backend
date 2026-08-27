@@ -288,6 +288,87 @@ export function passwordResetEmail(params: {
   };
 }
 
+/**
+ * An editor's personal invitation for someone to join JIDA as a reviewer.
+ *
+ * Deliberately plain — no branded header shell, no marketing. It should read
+ * like a short note a colleague typed in Gmail: a greeting, the editor's own
+ * words, and one link to respond. The recipient may not have a JIDA account
+ * yet, so the tone is a person asking a favour, not a system notification.
+ */
+export function reviewerInvitationEmail(params: {
+  inviterName: string;
+  message: string;
+  respondUrl: string;
+}): RenderedEmail {
+  const bodyParagraphs = params.message
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  return {
+    subject: `${params.inviterName} has invited you to review for JIDA`,
+    text: [
+      "Hello,",
+      "",
+      ...params.message.split("\n"),
+      "",
+      "You can accept or decline here:",
+      params.respondUrl,
+      "",
+      `— ${params.inviterName}`,
+      "Journal of Inter-Discourse Academia",
+    ].join("\n"),
+    html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:${TEXT};max-width:600px;">
+      <p style="margin:0 0 14px;">Hello,</p>
+      ${bodyParagraphs.map((p) => `<p style="margin:0 0 14px;">${escapeHtml(p).replace(/\n/g, "<br />")}</p>`).join("")}
+      <p style="margin:18px 0 6px;">You can respond here:</p>
+      <p style="margin:0 0 18px;"><a href="${escapeHtml(params.respondUrl)}" style="color:${BRAND};font-weight:600;">Accept or decline this invitation</a></p>
+      <p style="margin:0;color:${MUTED};">— ${escapeHtml(params.inviterName)}<br />Journal of Inter-Discourse Academia</p>
+    </div>`,
+  };
+}
+
+/**
+ * Sent to a reviewer the moment they are assigned a manuscript. Carries
+ * Accept / Decline links that work without signing in (tokenised), because
+ * the reviewer must respond before the review form opens.
+ */
+export function assignmentInviteEmail(params: {
+  title: string;
+  deadline: Date;
+  respondUrl: string;
+  dashboardUrl: string;
+}): RenderedEmail {
+  return {
+    subject: `JIDA: you have been asked to review "${params.title}"`,
+    text: [
+      `You have been assigned to review "${params.title}".`,
+      `If you accept, your evaluation is due by ${params.deadline.toUTCString()}.`,
+      "",
+      "Accept or decline this assignment:",
+      params.respondUrl,
+      "",
+      `Your dashboard: ${params.dashboardUrl}`,
+      "",
+      "— JIDA",
+    ].join("\n"),
+    html: layout({
+      heading: "New review assignment",
+      body: [
+        paragraph(escapeHtml(`You have been asked to review "${params.title}".`)),
+        paragraph(
+          escapeHtml(
+            `If you accept, your evaluation is due by ${params.deadline.toUTCString()}. Peer review is blind — the authors' identities are withheld.`,
+          ),
+        ),
+        button(params.respondUrl, "Accept or decline"),
+        fallbackLink(params.respondUrl),
+      ].join(""),
+    }),
+  };
+}
+
 /** Generic notification body used by the editorial workflow emails. */
 export function notificationEmail(params: {
   heading: string;

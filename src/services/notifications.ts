@@ -1,6 +1,11 @@
 import { prisma } from "../lib/prisma.js";
 import { sendMailSafe } from "./email.js";
-import { notificationEmail, submissionReceiptEmail } from "./emailTemplates.js";
+import {
+  assignmentInviteEmail,
+  notificationEmail,
+  reviewerInvitationEmail,
+  submissionReceiptEmail,
+} from "./emailTemplates.js";
 import { env } from "../config/env.js";
 import { storedRolesGranting } from "../utils/roles.js";
 import { Role, type ManuscriptStatus } from "@prisma/client";
@@ -10,6 +15,10 @@ const appUrl = (): string => env.APP_URL.replace(/\/$/, "");
 const authorDashboard = (): string => `${appUrl()}/author`;
 const editorDashboard = (): string => `${appUrl()}/editor`;
 const reviewerDashboard = (): string => `${appUrl()}/reviewer`;
+
+/** The frontend landing page for an email magic-link accept/decline. */
+export const invitationRespondUrl = (rawToken: string): string =>
+  `${appUrl()}/invitations/${encodeURIComponent(rawToken)}`;
 
 /**
  * Requirement 2 (FR-A3) — the author's own copy of a submission.
@@ -110,24 +119,143 @@ export async function notifyAuthorEditedFile(
   });
 }
 
-export async function notifyReviewerAssigned(
-  email: string,
-  title: string,
-  deadline: Date,
-): Promise<void> {
+/**
+ * A reviewer has just been assigned a manuscript. Drops an in-app
+ * notification carrying the assignment id (so the bell can show Accept /
+ * Decline) and emails the same choice as a tokenised magic link.
+ */
+export async function notifyReviewerAssigned(params: {
+  reviewerId: string;
+  reviewerEmail: string;
+  assignmentId: string;
+  rawResponseToken: string;
+  title: string;
+  deadline: Date;
+}): Promise<void> {
+  await prisma.notification.create({
+    data: {
+      userId: params.reviewerId,
+      title: "New review assignment",
+      body: `You have been asked to review "${params.title}". Accept or decline to continue.`,
+      kind: "REVIEW_ASSIGNMENT",
+      refId: params.assignmentId,
+      visibleAt: new Date(),
+    },
+  });
   await sendMailSafe({
-    to: email,
-    ...notificationEmail({
-      heading: "New review assignment",
-      subject: "JIDA: new review assignment",
-      lines: [
-        `You have been assigned to review "${title}".`,
-        `Please submit your evaluation by ${deadline.toUTCString()}.`,
-      ],
-      actionUrl: reviewerDashboard(),
-      actionLabel: "Open my assignments",
+    to: params.reviewerEmail,
+    ...assignmentInviteEmail({
+      title: params.title,
+      deadline: params.deadline,
+      respondUrl: invitationRespondUrl(params.rawResponseToken),
+      dashboardUrl: reviewerDashboard(),
     }),
   });
+}
+
+/**
+ * Once a reviewer has answered an assignment, the "Accept / Decline" buttons
+ * on their in-app notification are spent — collapse the row back to a plain
+ * read notification so it cannot be actioned again.
+ */
+export async function clearAssignmentActionNotifications(assignmentId: string): Promise<void> {
+  await prisma.notification.updateMany({
+    where: { kind: "REVIEW_ASSIGNMENT", refId: assignmentId },
+    data: { kind: "GENERIC", readAt: new Date() },
+  });
+}
+
+/** Editor's invitation for someone to become a JIDA reviewer. */
+export async function notifyReviewerInvitation(params: {
+  email: string;
+  inviterName: string;
+  message: string;
+  rawToken: string;
+}): Promise<boolean> {
+  return sendMailSafe({
+    to: params.email,
+    ...reviewerInvitationEmail({
+      inviterName: params.inviterName,
+      message: params.message,
+      respondUrl: invitationRespondUrl(params.rawToken),
+    }),
+  });
+}
+
+/** Tells the assigning editor whether a reviewer took or turned down an assignment. */
+export async function notifyEditorAssignmentResponse(params: {
+  editorId: string;
+  reviewerName: string;
+  title: string;
+  accepted: boolean;
+  reason?: string | null;
+}): Promise<void> {
+  const editor = await prisma.user.findUnique({ where: { id: params.editorId } });
+  const verb = params.accepted ? "accepted" : "declined";
+  await prisma.notification.create({
+    data: {
+      userId: params.editorId,
+      title: `Reviewer ${verb} an assignment`,
+      body:
+        `${params.reviewerName} ${verb} the review of "${params.title}".` +
+        (!params.accepted && params.reason ? ` Reason: ${params.reason}` : ""),
+      kind: "ASSIGNMENT_RESPONSE",
+      visibleAt: new Date(),
+    },
+  });
+  if (editor) {
+    await sendMailSafe({
+      to: editor.email,
+      ...notificationEmail({
+        heading: `Reviewer ${verb} an assignment`,
+        subject: `JIDA: reviewer ${verb} — "${params.title}"`,
+        lines: [
+          `${params.reviewerName} ${verb} the review of "${params.title}".`,
+          ...(!params.accepted && params.reason ? [`Reason given: ${params.reason}`] : []),
+        ],
+        actionUrl: editorDashboard(),
+        actionLabel: "Open editor dashboard",
+      }),
+    });
+  }
+}
+
+/** Tells the inviting editor whether a reviewer invitation was taken up. */
+export async function notifyEditorInvitationResponse(params: {
+  editorId: string;
+  email: string;
+  accepted: boolean;
+  reason?: string | null;
+}): Promise<void> {
+  const editor = await prisma.user.findUnique({ where: { id: params.editorId } });
+  const verb = params.accepted ? "accepted" : "declined";
+  await prisma.notification.create({
+    data: {
+      userId: params.editorId,
+      title: `Reviewer invitation ${verb}`,
+      body:
+        `${params.email} ${verb} your invitation to review for JIDA.` +
+        (!params.accepted && params.reason ? ` Reason: ${params.reason}` : ""),
+      kind: "GENERIC",
+      visibleAt: new Date(),
+    },
+  });
+  if (editor) {
+    await sendMailSafe({
+      to: editor.email,
+      ...notificationEmail({
+        heading: `Reviewer invitation ${verb}`,
+        subject: `JIDA: invitation ${verb} — ${params.email}`,
+        lines: [
+          `${params.email} ${verb} your invitation to review for JIDA.`,
+          ...(!params.accepted && params.reason ? [`Reason given: ${params.reason}`] : []),
+          ...(params.accepted ? ["They can now be assigned manuscripts from the Peer Review page."] : []),
+        ],
+        actionUrl: `${editorDashboard()}`,
+        actionLabel: "Open editor dashboard",
+      }),
+    });
+  }
 }
 
 /** FR-R6 — approaching review deadline reminder. */

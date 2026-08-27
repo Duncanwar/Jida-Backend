@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
 import { z } from "zod";
-import { ReviewerProgress, Role, type Review } from "@prisma/client";
+import { AssignmentResponse, ReviewerProgress, Role, type Review } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
@@ -12,10 +12,16 @@ import {
   requireVerifiedEmail,
   type AuthedRequest,
 } from "../middleware/auth.js";
-import { notifyEditorPendingDecision, notifyReviewerAssigned } from "../services/notifications.js";
+import {
+  clearAssignmentActionNotifications,
+  notifyEditorAssignmentResponse,
+  notifyEditorPendingDecision,
+  notifyReviewerAssigned,
+} from "../services/notifications.js";
 import { manuscriptUpload } from "../utils/upload.js";
 import { storedRolesGranting } from "../utils/roles.js";
 import { reviewFormSchema, toFullReview } from "../utils/reviewForm.js";
+import { hashToken, randomToken } from "../utils/cryptoToken.js";
 
 export const reviewerRouter = Router();
 reviewerRouter.use(authMiddleware, requireVerifiedEmail, requireRole(Role.REVIEWER, Role.ADMIN));
@@ -27,6 +33,9 @@ function toAssignmentDTO(a: {
   manuscriptId: string;
   deadline: Date;
   progress: string;
+  response?: string;
+  declineReason?: string | null;
+  respondedAt?: Date | null;
   manuscript: {
     id: string;
     title: string;
@@ -34,6 +43,7 @@ function toAssignmentDTO(a: {
     keywords: string[];
     createdAt: Date;
     submissionDeadline?: Date | null;
+    isRevised?: boolean;
   };
   review: Review | null;
 }) {
@@ -41,12 +51,16 @@ function toAssignmentDTO(a: {
     id: a.id,
     manuscriptId: a.manuscriptId,
     manuscriptTitle: a.manuscript.title,
+    manuscriptIsRevised: a.manuscript.isRevised ?? false,
     abstract: a.manuscript.abstract,
     keywords: a.manuscript.keywords,
     submittedAt: a.manuscript.createdAt,
     submissionDeadline: a.manuscript.submissionDeadline,
     deadline: a.deadline,
     progress: a.progress,
+    response: a.response ?? "PENDING",
+    declineReason: a.declineReason ?? null,
+    respondedAt: a.respondedAt ?? null,
     recommendation: a.review?.recommendation,
     commentsToAuthor: a.review?.commentsToAuthor,
     commentsToEditor: a.review?.commentsToEditor,
@@ -71,6 +85,7 @@ reviewerRouter.get(
             abstract: true,
             keywords: true,
             status: true,
+            isRevised: true,
             createdAt: true,
             submissionDeadline: true,
             author: { select: { firstName: true, lastName: true, affiliation: true } },
@@ -109,6 +124,64 @@ reviewerRouter.get(
       return;
     }
     res.download(abs, file.originalName);
+  }),
+);
+
+const respondSchema = z
+  .object({
+    accept: z.boolean(),
+    reason: z.string().trim().max(1000).optional(),
+  })
+  .refine((v) => v.accept || (v.reason && v.reason.length > 0), {
+    message: "A reason is required when declining",
+    path: ["reason"],
+  });
+
+/**
+ * The reviewer accepts or declines an assignment from the in-app notification.
+ * Declining keeps the row (with a reason) as a record and tells the editor;
+ * the review form stays locked until the assignment is accepted.
+ */
+reviewerRouter.post(
+  "/assignments/:id/respond",
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const body = respondSchema.parse(req.body);
+    const assignment = await prisma.reviewAssignment.findFirst({
+      where: { id: req.params.id, reviewerId: req.user!.id },
+      include: { manuscript: { select: { title: true } } },
+    });
+    if (!assignment) {
+      res.status(404).json({ error: "Assignment not found" });
+      return;
+    }
+    if (assignment.response !== AssignmentResponse.PENDING) {
+      res.status(409).json({ error: `Assignment already ${assignment.response.toLowerCase()}` });
+      return;
+    }
+
+    const updated = await prisma.reviewAssignment.update({
+      where: { id: assignment.id },
+      data: {
+        response: body.accept ? AssignmentResponse.ACCEPTED : AssignmentResponse.DECLINED,
+        declineReason: body.accept ? null : (body.reason ?? null),
+        respondedAt: new Date(),
+        responseToken: null,
+      },
+      include: { manuscript: true, review: true },
+    });
+
+    const reviewer = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+    await clearAssignmentActionNotifications(assignment.id);
+    await notifyEditorAssignmentResponse({
+      editorId: assignment.assignedById,
+      reviewerName:
+        [reviewer.firstName, reviewer.lastName].filter(Boolean).join(" ") || reviewer.email,
+      title: assignment.manuscript.title,
+      accepted: body.accept,
+      reason: body.reason,
+    });
+
+    res.json(toAssignmentDTO(updated));
   }),
 );
 
@@ -153,6 +226,14 @@ reviewerRouter.post(
     }
     if (assignment.review) {
       res.status(400).json({ error: "Review already submitted" });
+      return;
+    }
+    if (assignment.response === AssignmentResponse.DECLINED) {
+      res.status(409).json({ error: "You declined this assignment" });
+      return;
+    }
+    if (assignment.response === AssignmentResponse.PENDING) {
+      res.status(409).json({ error: "Accept the assignment before submitting a review" });
       return;
     }
 
@@ -243,12 +324,35 @@ reviewerRouter.get(
   }),
 );
 
-/** Called by editor workflow when assigning (exported for editor route reuse). */
+/**
+ * Called by the editor workflow right after an assignment is created. Mints a
+ * magic-link response token, stores its hash on the assignment, and notifies
+ * the reviewer (in-app + email) with Accept / Decline. Exported for editor
+ * route reuse.
+ */
 export async function sendReviewerAssignmentEmail(
+  assignmentId: string,
   reviewerId: string,
   title: string,
   deadline: Date,
 ): Promise<void> {
   const reviewer = await prisma.user.findUniqueOrThrow({ where: { id: reviewerId } });
-  await notifyReviewerAssigned(reviewer.email, title, deadline);
+  const rawToken = randomToken();
+  await prisma.reviewAssignment.update({
+    where: { id: assignmentId },
+    data: {
+      responseToken: hashToken(rawToken),
+      response: AssignmentResponse.PENDING,
+      respondedAt: null,
+      declineReason: null,
+    },
+  });
+  await notifyReviewerAssigned({
+    reviewerId,
+    reviewerEmail: reviewer.email,
+    assignmentId,
+    rawResponseToken: rawToken,
+    title,
+    deadline,
+  });
 }

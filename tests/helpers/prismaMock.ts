@@ -39,6 +39,8 @@ export const prismaMock = {
   editorialDecision: model(),
   issue: model(),
   publication: model(),
+  notification: model(),
+  reviewerInvitation: model(),
   $transaction: vi.fn(async (arg: unknown) => {
     if (typeof arg === "function") return (arg as (tx: typeof prismaMock) => unknown)(prismaMock);
     return Promise.all(arg as Promise<unknown>[]);

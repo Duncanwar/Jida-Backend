@@ -29,12 +29,14 @@ import {
   notifyReviewerOfFinalDecision,
 } from "../services/notifications.js";
 import { slugify } from "../utils/slug.js";
+import { randomUUID } from "node:crypto";
 import { manuscriptUpload } from "../utils/upload.js";
 import { storedRolesGranting } from "../utils/roles.js";
 import { toFullReview } from "../utils/reviewForm.js";
 import { checkScholarReadiness, type ScholarSubject } from "../services/scholar.js";
 import { sendReviewerAssignmentEmail } from "./reviewer.js";
 import { hashToken, randomToken } from "../utils/cryptoToken.js";
+import { broadcastAnnouncement, broadcastIssue } from "../services/newsletter.js";
 
 /** A manuscript may carry at most this many reviewers (FR — blind peer review). */
 const MAX_REVIEWERS_PER_MANUSCRIPT = 2;
@@ -631,6 +633,10 @@ const announcementSchema = z.object({
   body: z.string().trim().min(1).max(2000),
   submissionDeadline: z.coerce.date().nullable().optional(),
   openForSubmissions: z.boolean().optional(),
+  /** Also email this to the public newsletter list — e.g. a call for papers. */
+  notifySubscribers: z.boolean().optional(),
+  /** Publish it on the public site, where anyone — and Google — can read it. */
+  isPublic: z.boolean().optional(),
 });
 
 /**
@@ -663,6 +669,18 @@ editorRouter.post(
       });
     }
 
+    // The announcement itself, kept whether or not it is public: it is the
+    // journal's own record, and it can be published later.
+    const announcement = await prisma.announcement.create({
+      data: {
+        slug: slugify(body.title, randomUUID()),
+        title: body.title,
+        body: body.body,
+        isPublic: body.isPublic ?? false,
+        createdById: req.user?.id ?? null,
+      },
+    });
+
     // Every real account gets it exactly once, including the posting editor
     // — no separate "confirmation row" hack, and no double-count for an
     // account that holds more than one role.
@@ -677,9 +695,41 @@ editorRouter.post(
       })),
     });
 
-    res.status(201).json({ recipientCount: recipients.length });
+    // A call for papers is worth nothing if it only reaches people who already
+    // have an account. When asked, the same text also goes to the public
+    // newsletter list. Best-effort — the announcement is already posted.
+    const newsletter = body.notifySubscribers
+      ? await broadcastAnnouncement({ title: body.title, body: body.body })
+      : { recipients: 0, delivered: 0 };
+
+    res.status(201).json({
+      recipientCount: recipients.length,
+      newsletter,
+      announcement: { id: announcement.id, slug: announcement.slug, isPublic: announcement.isPublic },
+    });
   }),
 );
+/**
+ * Tells the public newsletter list that an issue is published.
+ *
+ * Deliberately a separate action rather than a side effect of publishing a
+ * manuscript: articles go into an issue one at a time, so mailing on each
+ * publish would send readers one email per article. The editor decides when the
+ * issue is complete enough to announce.
+ */
+editorRouter.post(
+  "/issues/:issueId/notify-subscribers",
+  asyncHandler(async (req, res) => {
+    const issue = await prisma.issue.findUnique({ where: { id: req.params.issueId } });
+    if (!issue) {
+      res.status(404).json({ error: "Issue not found" });
+      return;
+    }
+    const result = await broadcastIssue(issue.id);
+    res.json(result);
+  }),
+);
+
 
 /** Editor download of manuscript file (same as reviewer). */
 editorRouter.get(

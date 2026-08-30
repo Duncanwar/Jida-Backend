@@ -1,10 +1,12 @@
 ﻿import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
+import { sendNewsletterWelcome } from "../services/newsletter.js";
 
 export const publicRouter = Router();
 
@@ -143,6 +145,40 @@ publicRouter.get(
   }),
 );
 
+/**
+ * Public announcements — a call for papers is worthless if it only reaches
+ * people who already have an account.
+ *
+ * Only rows explicitly marked public are served. Internal notices stay
+ * invisible here, which is why `isPublic` defaults to false.
+ */
+publicRouter.get(
+  "/announcements",
+  asyncHandler(async (_req, res) => {
+    const announcements = await prisma.announcement.findMany({
+      where: { isPublic: true },
+      select: { id: true, slug: true, title: true, body: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(announcements);
+  }),
+);
+
+publicRouter.get(
+  "/announcements/:slug",
+  asyncHandler(async (req, res) => {
+    const announcement = await prisma.announcement.findFirst({
+      where: { slug: req.params.slug, isPublic: true },
+      select: { id: true, slug: true, title: true, body: true, createdAt: true },
+    });
+    if (!announcement) {
+      res.status(404).json({ error: "Announcement not found" });
+      return;
+    }
+    res.json(announcement);
+  }),
+);
+
 const subscribeSchema = z.object({
   email: z.string().email().transform((v) => v.toLowerCase().trim()),
 });
@@ -154,12 +190,47 @@ publicRouter.post(
 
     // Idempotent — resubscribing (or double-clicking the button) is a no-op,
     // not an error the reader needs to see.
-    await prisma.newsletterSubscriber.upsert({
+    // Resubscribing clears a previous unsubscribe and issues a fresh token, so
+    // the old link in an old email can no longer remove the new subscription.
+    const subscriber = await prisma.newsletterSubscriber.upsert({
       where: { email: body.email },
       create: { email: body.email },
-      update: {},
+      update: { unsubscribedAt: null, unsubscribeToken: randomUUID() },
     });
+
+    // Best-effort: the address is saved either way. Telling the reader the
+    // subscription failed because our mail server hiccuped would be wrong.
+    await sendNewsletterWelcome(subscriber.email, subscriber.unsubscribeToken);
 
     res.status(201).json({ message: "Subscribed" });
   }),
 );
+/**
+ * Unsubscribe from the reader newsletter.
+ *
+ * Reachable with nothing but the token from the email footer — readers have no
+ * account to sign in to. Idempotent: clicking an old link again, or a link for
+ * an address already removed, still reports success rather than an error the
+ * reader can do nothing about.
+ */
+publicRouter.post(
+  "/unsubscribe/:token",
+  asyncHandler(async (req, res) => {
+    const subscriber = await prisma.newsletterSubscriber.findUnique({
+      where: { unsubscribeToken: req.params.token },
+      select: { id: true, email: true, unsubscribedAt: true },
+    });
+    if (!subscriber) {
+      res.status(404).json({ error: "This unsubscribe link is not valid." });
+      return;
+    }
+    if (!subscriber.unsubscribedAt) {
+      await prisma.newsletterSubscriber.update({
+        where: { id: subscriber.id },
+        data: { unsubscribedAt: new Date() },
+      });
+    }
+    res.json({ message: "Unsubscribed", email: subscriber.email });
+  }),
+);
+

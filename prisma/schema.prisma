@@ -415,12 +415,45 @@ model Publication {
   @@index([issueId])
 }
 
+/// A journal announcement — typically a call for papers.
+///
+/// Announcements were previously only Notification rows, one per account, which
+/// meant a call for papers reached only people who already had an account. This
+/// table is the announcement itself, so one can also be published on the public
+/// site. The per-account notifications are still created alongside it.
+model Announcement {
+  id        String   @id @default(uuid())
+  /// Address of its public page. Stable once created, so a shared link keeps
+  /// working even if the title is later corrected.
+  slug      String   @unique
+  title     String
+  body      String
+  /// Only public announcements appear on the site and in the sitemap. Off by
+  /// default: most announcements are internal notices, and publishing one by
+  /// accident cannot be undone once it is indexed.
+  isPublic  Boolean  @default(false)
+  /// Who posted it. A plain id, not a relation — this is a record of authorship
+  /// and must survive the account being deleted.
+  createdById String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isPublic, createdAt])
+}
+
 /// A reader who asked to be notified when a new issue is published. Public —
 /// no account required, so there is no `User` relation.
 model NewsletterSubscriber {
   id        String   @id @default(uuid())
   email     String   @unique
   createdAt DateTime @default(now())
+  /// Secret carried in the unsubscribe link of every newsletter email. Random
+  /// per subscriber, so one reader's link can never remove another's address,
+  /// and so the link works without signing in — readers have no account.
+  unsubscribeToken String @unique @default(uuid())
+  /// Set when the reader unsubscribes. The row is kept rather than deleted, so
+  /// the address stays suppressed even if an old form posts it again.
+  unsubscribedAt DateTime?
 }
 
 /// A user-set reminder tied to a manuscript. In-app only — no email is sent.

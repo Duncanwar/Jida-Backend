@@ -370,6 +370,127 @@ export function assignmentInviteEmail(params: {
 }
 
 /** Generic notification body used by the editorial workflow emails. */
+/**
+ * Newsletter — the reader-facing list. Readers have no account, so every one of
+ * these carries an unsubscribe link; without one, mailbox providers treat bulk
+ * mail as spam and start throttling the whole domain.
+ *
+ * The footer replaces the shared "do not reply" note, because for a reader that
+ * note is not the important part — the way out is.
+ */
+function newsletterFooter(unsubscribeUrl: string): string {
+  return `You are receiving this because you subscribed to JIDA publication updates.
+    <br /><a href="${escapeHtml(unsubscribeUrl)}" style="color:${MUTED};">Unsubscribe</a>`;
+}
+
+/** Sent once, immediately, when a reader subscribes. Confirms it worked. */
+export function newsletterWelcomeEmail(params: {
+  archiveUrl: string;
+  unsubscribeUrl: string;
+}): RenderedEmail {
+  return {
+    subject: "You are subscribed to JIDA",
+    text: [
+      "Thank you for subscribing to the Journal of Inter-Discourse Academia.",
+      "",
+      "We will email you when a new issue is published and when the editors post a call for papers. We send nothing else.",
+      "",
+      `Browse the archive: ${params.archiveUrl}`,
+      "",
+      `Unsubscribe at any time: ${params.unsubscribeUrl}`,
+      "",
+      "— JIDA",
+    ].join("\n"),
+    html: layout({
+      heading: "You are subscribed",
+      body: [
+        paragraph("Thank you for subscribing to the <strong>Journal of Inter-Discourse Academia</strong>."),
+        paragraph(
+          "We will email you when a new issue is published, and when the editors post a call for papers. We send nothing else.",
+        ),
+        button(params.archiveUrl, "Browse the archive"),
+      ].join(""),
+      footerNote: newsletterFooter(params.unsubscribeUrl),
+    }),
+  };
+}
+
+/** An editor announcement — a call for papers, or journal news. */
+export function newsletterAnnouncementEmail(params: {
+  title: string;
+  body: string;
+  archiveUrl: string;
+  unsubscribeUrl: string;
+}): RenderedEmail {
+  return {
+    subject: `JIDA: ${params.title}`,
+    text: [
+      params.title,
+      "",
+      params.body,
+      "",
+      `Read more about JIDA: ${params.archiveUrl}`,
+      "",
+      `Unsubscribe: ${params.unsubscribeUrl}`,
+      "",
+      "— JIDA",
+    ].join("\n"),
+    html: layout({
+      heading: params.title,
+      // The editor types plain text. Blank lines become separate paragraphs and
+      // single newlines become line breaks, so the mail does not arrive as one
+      // dense block.
+      body: [
+        ...params.body
+          .split(/\n\s*\n/)
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .map((part) => paragraph(escapeHtml(part).replace(/\n/g, "<br />"))),
+        button(params.archiveUrl, "Visit JIDA"),
+      ].join(""),
+      footerNote: newsletterFooter(params.unsubscribeUrl),
+    }),
+  };
+}
+
+/**
+ * A new issue is out. Readers are only ever pointed at the public archive —
+ * they have no account and no dashboard to go to.
+ */
+export function newsletterIssueEmail(params: {
+  issueLabel: string;
+  articleCount: number;
+  archiveUrl: string;
+  unsubscribeUrl: string;
+}): RenderedEmail {
+  const count = `${params.articleCount} article${params.articleCount === 1 ? "" : "s"}`;
+  return {
+    subject: `JIDA ${params.issueLabel} is now published`,
+    text: [
+      `${params.issueLabel} of the Journal of Inter-Discourse Academia is now published.`,
+      "",
+      `This issue contains ${count}. You can read and download every article free of charge.`,
+      "",
+      `Read this issue in the archive: ${params.archiveUrl}`,
+      "",
+      `Unsubscribe: ${params.unsubscribeUrl}`,
+      "",
+      "— JIDA",
+    ].join("\n"),
+    html: layout({
+      heading: `${params.issueLabel} is published`,
+      body: [
+        paragraph(
+          `<strong>${escapeHtml(params.issueLabel)}</strong> of the Journal of Inter-Discourse Academia is now published.`,
+        ),
+        paragraph(`This issue contains ${count}. Every article is free to read and download.`),
+        button(params.archiveUrl, "Read this issue in the archive"),
+      ].join(""),
+      footerNote: newsletterFooter(params.unsubscribeUrl),
+    }),
+  };
+}
+
 export function notificationEmail(params: {
   heading: string;
   subject: string;

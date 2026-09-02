@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { AssignmentResponse, InvitationStatus, Role } from "@prisma/client";
+import { AccountStatus, AssignmentResponse, InvitationStatus, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import { hashToken } from "../utils/cryptoToken.js";
@@ -156,9 +156,12 @@ invitationsRouter.post(
             firstName: firstName || undefined,
             lastName: rest.length ? rest.join(" ") : undefined,
             // Invited by an editor who vouches for the address — same rule as
-            // admin-provisioned accounts (see routes/admin.ts).
+            // admin-provisioned accounts (see routes/admin.ts). That vouching
+            // covers approval too: an invited reviewer is already recognised.
             emailVerified: true,
             emailVerifiedAt: new Date(),
+            accountStatus: AccountStatus.APPROVED,
+            accountStatusAt: new Date(),
           },
         });
       }

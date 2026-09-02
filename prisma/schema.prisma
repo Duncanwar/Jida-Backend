@@ -92,6 +92,13 @@ enum FileSource {
 
 /// How the account authenticates. LOCAL = email + password, GOOGLE = Google
 /// Identity Services, BOTH = a local account that has been linked to Google.
+/// Whether a registered account has been recognised by the journal.
+enum AccountStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum AuthProvider {
   LOCAL
   GOOGLE
@@ -123,6 +130,24 @@ model User {
   /// Google's stable subject identifier ("sub" claim). Unique when present.
   googleId        String?      @unique
   avatarUrl       String?
+
+  /// Whether the journal has recognised this account.
+  ///
+  /// Only self-registration starts as PENDING. Accounts the journal creates
+  /// itself — an invited reviewer, an admin-created user, the seeded admin —
+  /// are APPROVED on creation: they were already vouched for by the person who
+  /// made them, and sending them to a queue would be asking the editors to
+  /// approve their own invitations.
+  ///
+  /// A PENDING author may still sign in and see their dashboard; what they
+  /// cannot do is submit a manuscript. Blocking sign-in instead makes a slow
+  /// queue indistinguishable from a broken login.
+  accountStatus   AccountStatus @default(PENDING)
+  accountStatusAt DateTime?
+  /// Id of the chief editor or admin who approved or rejected it.
+  accountStatusBy String?
+  /// Shown to the author when rejected, so a refusal is not silent.
+  rejectionReason String?
 
   /// Soft-disable: an inactive account keeps its data but cannot sign in.
   isActive     Boolean   @default(true)

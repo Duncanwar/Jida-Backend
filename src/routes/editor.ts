@@ -3,6 +3,7 @@ import path from "node:path";
 import { Router } from "express";
 import { z } from "zod";
 import {
+  AccountStatus,
   AssignmentResponse,
   DecisionStage,
   EditorialDecisionType,
@@ -21,6 +22,7 @@ import {
   type AuthedRequest,
 } from "../middleware/auth.js";
 import {
+  notifyAuthorAccountDecision,
   notifyAuthorEditedFile,
   notifyAuthorPublished,
   notifyAuthorStatus,
@@ -633,11 +635,33 @@ const announcementSchema = z.object({
   body: z.string().trim().min(1).max(2000),
   submissionDeadline: z.coerce.date().nullable().optional(),
   openForSubmissions: z.boolean().optional(),
-  /** Also email this to the public newsletter list — e.g. a call for papers. */
-  notifySubscribers: z.boolean().optional(),
-  /** Publish it on the public site, where anyone — and Google — can read it. */
-  isPublic: z.boolean().optional(),
+  /**
+   * Who the announcement is for. One choice rather than independent flags,
+   * because these audiences are nested, not orthogonal: two checkboxes allowed
+   * "staff only" and "publish to the world" to be ticked together, and neither
+   * publishing nor emailing can be undone.
+   *
+   *   EVERYONE — public page + newsletter + every account holder
+   *   MEMBERS  — every account holder. Not public, no email.
+   *   STAFF    — editors, reviewers and admins. Authors excluded.
+   *
+   * Defaults to MEMBERS, which is what an announcement did before this field
+   * existed: seen in-app by everyone, published nowhere.
+   */
+  audience: z.enum(["EVERYONE", "MEMBERS", "STAFF"]).default("MEMBERS"),
 });
+
+/**
+ * Every role that counts as staff — i.e. everyone except a plain author.
+ * Reviewers are included: they do the journal's work and need its notices.
+ */
+const STAFF_ROLES: Role[] = [
+  Role.REVIEWER,
+  Role.EDITOR,
+  Role.CHIEF_EDITOR,
+  Role.ASSOCIATE_EDITOR,
+  Role.ADMIN,
+];
 
 /**
  * Broadcasts a submission-period announcement to every user — author,
@@ -669,6 +693,8 @@ editorRouter.post(
       });
     }
 
+    const isPublic = body.audience === "EVERYONE";
+
     // The announcement itself, kept whether or not it is public: it is the
     // journal's own record, and it can be published later.
     const announcement = await prisma.announcement.create({
@@ -676,15 +702,25 @@ editorRouter.post(
         slug: slugify(body.title, randomUUID()),
         title: body.title,
         body: body.body,
-        isPublic: body.isPublic ?? false,
+        isPublic,
         createdById: req.user?.id ?? null,
       },
     });
 
-    // Every real account gets it exactly once, including the posting editor
-    // — no separate "confirmation row" hack, and no double-count for an
-    // account that holds more than one role.
-    const recipients = await prisma.user.findMany({ select: { id: true } });
+    // Each recipient gets it exactly once — no double-count for an account
+    // holding several roles, and the posting editor is included, so their own
+    // notification feed doubles as announcement history.
+    //
+    // STAFF matches the stored role list and the older single-role column
+    // together: the list is a backfill, and an account the backfill missed must
+    // not silently drop out of a staff notice.
+    const recipients = await prisma.user.findMany({
+      where:
+        body.audience === "STAFF"
+          ? { OR: [{ roles: { hasSome: STAFF_ROLES } }, { role: { in: STAFF_ROLES } }] }
+          : undefined,
+      select: { id: true },
+    });
     const visibleAt = new Date();
     await prisma.notification.createMany({
       data: recipients.map((r) => ({
@@ -698,13 +734,14 @@ editorRouter.post(
     // A call for papers is worth nothing if it only reaches people who already
     // have an account. When asked, the same text also goes to the public
     // newsletter list. Best-effort — the announcement is already posted.
-    const newsletter = body.notifySubscribers
+    const newsletter = isPublic
       ? await broadcastAnnouncement({ title: body.title, body: body.body })
       : { recipients: 0, delivered: 0 };
 
     res.status(201).json({
       recipientCount: recipients.length,
       newsletter,
+      audience: body.audience,
       announcement: { id: announcement.id, slug: announcement.slug, isPublic: announcement.isPublic },
     });
   }),
@@ -826,5 +863,92 @@ editorRouter.get(
       return;
     }
     res.download(abs, review.attachmentOriginalName ?? review.attachmentStoredName);
+  }),
+);
+
+/**
+ * Author approval queue.
+ *
+ * Restricted to the chief editor and admin — deliberately narrower than the
+ * rest of this router, which any editor tier reaches. Deciding who the journal
+ * recognises is not the same authority as handling manuscripts.
+ *
+ * requireRole expands roles, and nothing implies CHIEF_EDITOR, so a plain
+ * EDITOR does not pass this even though they pass the router-level guard.
+ */
+const APPROVAL_ROLES = [Role.CHIEF_EDITOR, Role.ADMIN] as const;
+
+editorRouter.get(
+  "/account-approvals",
+  requireRole(...APPROVAL_ROLES),
+  asyncHandler(async (_req, res) => {
+    const pending = await prisma.user.findMany({
+      where: { accountStatus: AccountStatus.PENDING },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        affiliation: true,
+        emailVerified: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    res.json(pending);
+  }),
+);
+
+const approvalSchema = z.object({
+  approved: z.boolean(),
+  reason: z.string().trim().max(500).optional(),
+});
+
+editorRouter.patch(
+  "/account-approvals/:id",
+  requireRole(...APPROVAL_ROLES),
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const body = approvalSchema.parse(req.body);
+    const target = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, email: true, accountStatus: true, roles: true, role: true },
+    });
+    if (!target) {
+      res.status(404).json({ error: "Account not found" });
+      return;
+    }
+
+    // Only a waiting account can be decided. Re-deciding an approved account
+    // here would be a quiet way to revoke someone's access without it showing
+    // up as the deactivation it actually is — that belongs in user management.
+    if (target.accountStatus !== AccountStatus.PENDING) {
+      res.status(409).json({
+        error: `This account is already ${target.accountStatus.toLowerCase()}.`,
+        code: "NOT_PENDING",
+      });
+      return;
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        accountStatus: body.approved ? AccountStatus.APPROVED : AccountStatus.REJECTED,
+        accountStatusAt: new Date(),
+        accountStatusBy: req.user?.id ?? null,
+        rejectionReason: body.approved ? null : (body.reason ?? null),
+      },
+      select: { id: true, email: true, accountStatus: true, rejectionReason: true },
+    });
+
+    // Best-effort: the decision is recorded either way. An author who never
+    // gets the mail still finds the submission form working next time they
+    // sign in, which is the outcome that matters.
+    await notifyAuthorAccountDecision({
+      email: updated.email,
+      approved: body.approved,
+      reason: updated.rejectionReason,
+    });
+
+    res.json(updated);
   }),
 );

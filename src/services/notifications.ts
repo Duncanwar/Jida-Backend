@@ -373,3 +373,39 @@ export async function notifyAuthorPublished(
     }),
   });
 }
+
+/**
+ * Tells a self-registered author that the editorial team has decided on their
+ * account.
+ *
+ * A rejection carries its reason: a refusal the person cannot understand reads
+ * as a fault in the system, and they will simply register again.
+ */
+export async function notifyAuthorAccountDecision(params: {
+  email: string;
+  approved: boolean;
+  reason?: string | null;
+}): Promise<void> {
+  await sendMailSafe({
+    to: params.email,
+    ...notificationEmail({
+      heading: params.approved ? "Your JIDA account is approved" : "About your JIDA account",
+      subject: params.approved
+        ? "JIDA: your account is approved"
+        : "JIDA: your account was not approved",
+      lines: params.approved
+        ? [
+            "The editorial team has approved your author account.",
+            "You can now sign in and submit a manuscript to JIDA.",
+          ]
+        : [
+            "The editorial team has reviewed your author account and has not approved it for submissions.",
+            ...(params.reason ? [`Reason: ${params.reason}`] : []),
+            "If you believe this is a mistake, reply to this address and the editorial team will look again.",
+          ],
+      ...(params.approved
+        ? { actionUrl: `${appUrl()}/login`, actionLabel: "Sign in to JIDA" }
+        : {}),
+    }),
+  });
+}

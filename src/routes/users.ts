@@ -28,6 +28,10 @@ usersRouter.get(
         lastName: true,
         affiliation: true,
         createdAt: true,
+        // Read live rather than from the token: an author approved five minutes
+        // ago must see the submission form without signing out and back in.
+        accountStatus: true,
+        rejectionReason: true,
       },
     });
     if (!user) {

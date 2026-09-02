@@ -1,7 +1,7 @@
 import path from "node:path";
 import { Router } from "express";
 import { z } from "zod";
-import { Role, type ReviewRecommendation } from "@prisma/client";
+import { AccountStatus, Role, type ReviewRecommendation } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
@@ -140,6 +140,35 @@ manuscriptsRouter.post(
       coAuthors = parseCoAuthors(req.body?.coAuthors);
     } catch (err) {
       res.status(400).json({ error: err instanceof Error ? err.message : "Invalid co-authors" });
+      return;
+    }
+
+    // The approval gate. A self-registered author may sign in and look around
+    // while they wait, but submitting is what approval actually governs, so the
+    // check belongs here rather than at login: a queue that is slow to clear
+    // then reads as "not yet", not as a broken password.
+    //
+    // Checked against the database, never the token: a token minted before the
+    // decision would otherwise carry a stale status until it expired.
+    const account = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { accountStatus: true, rejectionReason: true },
+    });
+    if (account?.accountStatus === AccountStatus.PENDING) {
+      res.status(403).json({
+        error:
+          "Your account is waiting to be approved by the editorial team. You will be emailed when it is.",
+        code: "ACCOUNT_PENDING",
+      });
+      return;
+    }
+    if (account?.accountStatus === AccountStatus.REJECTED) {
+      res.status(403).json({
+        error: account.rejectionReason
+          ? `Your account was not approved: ${account.rejectionReason}`
+          : "Your account was not approved for submissions. Contact the editorial team.",
+        code: "ACCOUNT_REJECTED",
+      });
       return;
     }
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Role } from "@prisma/client";
+import { AccountStatus, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import { authMiddleware, requireRole, type AuthedRequest } from "../middleware/auth.js";
@@ -93,6 +93,10 @@ adminRouter.post(
         firstName: firstName || undefined,
         lastName: rest.length ? rest.join(" ") : undefined,
         affiliation: body.institution,
+        // The admin creating the account is the recognition — sending it to
+        // the approval queue would ask the editors to approve their own work.
+        accountStatus: AccountStatus.APPROVED,
+        accountStatusAt: new Date(),
         // FR-AUTH-1 — accounts provisioned by an admin are created verified.
         // The admin vouches for the address and hands over the password
         // out-of-band; no verification email is sent, so leaving these

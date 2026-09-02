@@ -15,7 +15,7 @@ import {
 } from "../services/emailVerification.js";
 import { GoogleAuthError, verifyGoogleIdToken } from "../services/googleAuth.js";
 import { authRateLimiter, verificationRateLimiter } from "../middleware/rateLimit.js";
-import { AuthProvider, Role, type User } from "@prisma/client";
+import { AccountStatus, AuthProvider, Role, type User } from "@prisma/client";
 import { expandRoles, normalizeRoles } from "../utils/roles.js";
 import { env, googleAuthEnabled } from "../config/env.js";
 
@@ -26,12 +26,16 @@ function publicUser(
   user: Pick<
     User,
     "id" | "email" | "role" | "firstName" | "lastName" | "emailVerified" | "avatarUrl"
-  > & { roles?: Role[] },
+  > & { roles?: Role[]; accountStatus?: AccountStatus; rejectionReason?: string | null },
 ) {
   return {
     id: user.id,
     email: user.email,
     role: user.role,
+    // So the author dashboard can show "waiting for approval" in place of the
+    // submission form, rather than letting them fill it in and be refused.
+    accountStatus: user.accountStatus ?? AccountStatus.APPROVED,
+    rejectionReason: user.rejectionReason ?? null,
     // Expanded so the client can render a switcher for every portal the
     // account can actually reach, not just the roles literally stored.
     roles: expandRoles(normalizeRoles(user.role, user.roles)),
@@ -55,11 +59,16 @@ const registerSchema = z
   .object({
     email: z.string().email().transform((v) => v.toLowerCase().trim()),
     password: z.string().min(8, "Password must be at least 8 characters"),
-    // RM-03 — admins cannot self-register; they are provisioned via the seed
-    // script. Editor tiers are assigned by an admin, not chosen at signup.
-    role: z.enum([Role.AUTHOR, Role.REVIEWER, Role.EDITOR]),
-    /** Additional roles requested at signup, e.g. an author who also reviews. */
-    roles: z.array(z.enum([Role.AUTHOR, Role.REVIEWER, Role.EDITOR])).optional(),
+    // Self-registration creates an AUTHOR and nothing else. The role is not an
+    // input at all: a stranger who could pick REVIEWER or EDITOR here walked
+    // straight into the editorial dashboards, and a field that is validated but
+    // ignored invites someone to "restore" it later.
+    //
+    // The other roles each have their own, deliberate path:
+    //   REVIEWER — an editor invites them; the invitation link builds the
+    //              account (see routes/invitations.ts).
+    //   EDITOR   — assigned by an admin on an existing account.
+    //   ADMIN    — provisioned by the seed script (RM-03).
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     // The frontend sends a single `name` field; accept both spellings.
@@ -104,8 +113,8 @@ authRouter.post(
       data: {
         email: body.email,
         passwordHash,
-        role: body.role,
-        roles: normalizeRoles(body.role, body.roles),
+        role: Role.AUTHOR,
+        roles: [Role.AUTHOR],
         firstName: body.firstName,
         lastName: body.lastName,
         affiliation: body.affiliation,
@@ -329,8 +338,8 @@ const googleSchema = z.object({
   // Google Identity Services calls this `credential`; accept `idToken` too.
   credential: z.string().min(1).optional(),
   idToken: z.string().min(1).optional(),
-  /** Role requested on first sign-up. Ignored for accounts that already exist. */
-  role: z.enum([Role.AUTHOR, Role.REVIEWER, Role.EDITOR]).optional(),
+  // No role here either: Google sign-in is the second door into registration,
+  // and leaving it open would defeat closing the first.
   affiliation: z.string().optional(),
   institution: z.string().optional(),
 });
@@ -399,8 +408,8 @@ authRouter.post(
           data: {
             email: identity.email,
             passwordHash: null,
-            role: body.role ?? Role.AUTHOR,
-            roles: normalizeRoles(body.role ?? Role.AUTHOR),
+            role: Role.AUTHOR,
+            roles: [Role.AUTHOR],
             firstName: identity.firstName,
             lastName: identity.lastName,
             affiliation: body.affiliation ?? body.institution,

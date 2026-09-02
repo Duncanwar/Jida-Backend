@@ -145,12 +145,28 @@ describe("POST /api/auth/register", () => {
     expect(res.body.error).toBe("Validation failed");
   });
 
-  it("does not allow registering as ADMIN", async () => {
-    const res = await request(app)
-      .post("/api/auth/register")
-      .send({ ...body, role: "ADMIN" });
-    expect(res.status).toBe(400);
-  });
+  // Self-registration creates an AUTHOR, whatever the caller asks for. The role
+  // is not an input, so a requested one is discarded rather than rejected — the
+  // account is still created, just never with the role that was asked for.
+  it.each(["ADMIN", "EDITOR", "REVIEWER"])(
+    "ignores a requested %s role and creates an AUTHOR",
+    async (requested) => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      prismaMock.user.create.mockResolvedValue(createdUser);
+      prismaMock.emailVerificationToken.findFirst.mockResolvedValue(null);
+      prismaMock.emailVerificationToken.deleteMany.mockResolvedValue({ count: 0 });
+      prismaMock.emailVerificationToken.create.mockResolvedValue({});
+
+      const res = await request(app)
+        .post("/api/auth/register")
+        .send({ ...body, role: requested, roles: [requested] });
+
+      expect(res.status).toBe(201);
+      const createArg = prismaMock.user.create.mock.calls[0][0];
+      expect(createArg.data.role).toBe("AUTHOR");
+      expect(createArg.data.roles).toEqual(["AUTHOR"]);
+    },
+  );
 });
 
 describe("POST /api/auth/login", () => {
@@ -455,21 +471,30 @@ describe("POST /api/auth/google", () => {
     expect(sendMail).not.toHaveBeenCalled();
   });
 
-  it("honours the role chosen at sign-up", async () => {
-    vi.mocked(verifyGoogleIdToken).mockResolvedValue(identity);
-    prismaMock.user.findUnique.mockResolvedValue(null);
-    prismaMock.user.create.mockResolvedValue({
-      id: "g1",
-      email: identity.email,
-      role: "REVIEWER",
-      emailVerified: true,
-      avatarUrl: null,
-    });
+  // Google sign-in is the second door into registration. Closing the signup
+  // form alone would achieve nothing if a role could still be smuggled here.
+  it.each(["ADMIN", "EDITOR", "REVIEWER"])(
+    "ignores a requested %s role and creates an AUTHOR",
+    async (requested) => {
+      vi.mocked(verifyGoogleIdToken).mockResolvedValue(identity);
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      prismaMock.user.create.mockResolvedValue({
+        id: "g1",
+        email: identity.email,
+        role: "AUTHOR",
+        emailVerified: true,
+        avatarUrl: null,
+      });
 
-    await request(app).post("/api/auth/google").send({ credential: "tok", role: "REVIEWER" });
+      await request(app)
+        .post("/api/auth/google")
+        .send({ credential: "tok", role: requested, roles: [requested] });
 
-    expect(prismaMock.user.create.mock.calls[0][0].data.role).toBe("REVIEWER");
-  });
+      const createArg = prismaMock.user.create.mock.calls[0][0];
+      expect(createArg.data.role).toBe("AUTHOR");
+      expect(createArg.data.roles).toEqual(["AUTHOR"]);
+    },
+  );
 
   it("links Google to an existing password account instead of duplicating it", async () => {
     vi.mocked(verifyGoogleIdToken).mockResolvedValue(identity);

@@ -301,7 +301,15 @@ reviewerRouter.get(
       include: {
         assignment: {
           include: {
-            manuscript: { select: { id: true, title: true, status: true } },
+            manuscript: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                createdAt: true,
+                submissionDeadline: true,
+              },
+            },
           },
         },
       },
@@ -313,6 +321,11 @@ reviewerRouter.get(
       id: r.id,
       manuscriptId: r.assignment.manuscript.id,
       manuscriptTitle: r.assignment.manuscript.title,
+      submittedAt: r.assignment.manuscript.createdAt,
+      // History groups by submission period the same way the live queue does,
+      // so it needs the deadline that was in effect when the manuscript came in.
+      submissionDeadline: r.assignment.manuscript.submissionDeadline,
+      reviewedAt: r.createdAt,
       deadline: r.assignment.deadline,
       progress: r.assignment.progress,
       recommendation: r.recommendation,
